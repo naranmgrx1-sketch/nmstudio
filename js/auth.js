@@ -2,10 +2,8 @@
   'use strict';
   const USERS_KEY = 'nmstudio_users_v1';
   const SESSION_KEY = 'nmstudio_session_v1';
-  const demoUsers = [
-    { id: 'demo-listener', name: 'Jordan Listener', email: 'user@nmstudio.local', password: 'listen123', role: 'customer', demo: true },
-    { id: 'demo-studio', name: 'NM Studio', email: 'admin@nmstudio.local', password: 'studio123', role: 'admin', demo: true }
-  ];
+  const demoAccountIds = ['demo-listener', 'demo-studio'];
+  const demoAccountEmails = ['user@nmstudio.local', 'admin@nmstudio.local'];
   let users = [];
   let currentUser = null;
 
@@ -18,15 +16,13 @@
   function init() {
     const storedUsers = NMStorage.get(USERS_KEY, []);
     users = Array.isArray(storedUsers) ? storedUsers.filter(function (user) {
-      return user && typeof user.id === 'string' && typeof user.email === 'string';
+      return user && typeof user.id === 'string' && typeof user.email === 'string' &&
+        user.demo !== true && !demoAccountIds.includes(user.id) &&
+        !demoAccountEmails.includes(user.email.trim().toLowerCase());
     }) : [];
-    demoUsers.forEach(function (demo) {
-      if (!users.some(function (user) { return user.id === demo.id; })) users.push(demo);
-    });
-    const sessionId = NMStorage.get(SESSION_KEY, null);
-    currentUser = users.find(function (user) { return user.id === sessionId; }) || null;
+    currentUser = null;
     save();
-    return currentUser;
+    return null;
   }
 
   function signIn(email, password) {
@@ -51,30 +47,10 @@
       name: name,
       email: email,
       password: password,
-      role: data.role === 'admin' ? 'admin' : 'customer',
-      demo: false
+      role: data.role === 'admin' ? 'admin' : 'customer'
     };
     users.push(user);
     currentUser = user;
-    save();
-    return currentUser;
-  }
-
-  function demoLogin(role) {
-    const user = users.find(function (candidate) { return candidate.id === (role === 'admin' ? 'demo-studio' : 'demo-listener'); });
-    if (!user) throw new Error('The local demo account is unavailable.');
-    user.role = role === 'admin' ? 'admin' : 'customer';
-    currentUser = user;
-    users = users.map(function (candidate) { return candidate.id === user.id ? user : candidate; });
-    save();
-    return currentUser;
-  }
-
-  function switchDemoRole() {
-    if (!currentUser || !currentUser.demo) throw new Error('Role switching is available for demo accounts only.');
-    const role = currentUser.role === 'admin' ? 'customer' : 'admin';
-    currentUser.role = role;
-    users = users.map(function (user) { return user.id === currentUser.id ? currentUser : user; });
     save();
     return currentUser;
   }
@@ -86,7 +62,7 @@
 
   function getUsers() {
     return users.map(function (user) {
-      return { id: user.id, name: user.name, email: user.email, role: user.role, demo: Boolean(user.demo) };
+      return { id: user.id, name: user.name, email: user.email, role: user.role };
     });
   }
 
@@ -94,8 +70,6 @@
     init: init,
     signIn: signIn,
     signUp: signUp,
-    demoLogin: demoLogin,
-    switchDemoRole: switchDemoRole,
     signOut: signOut,
     getCurrentUser: function () { return currentUser; },
     getUsers: getUsers

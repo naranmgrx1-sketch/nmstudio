@@ -94,14 +94,6 @@
 .auth-form input, .auth-form select { padding: 11px; }
 .auth-submit { margin-top: 3px; display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; }
 .auth-submit span { font-size: 15px; }
-.demo-access { margin-top: 21px; padding-top: 16px; border-top: 1px solid var(--line); }
-.demo-access > div { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
-.demo-button { display: flex; align-items: center; gap: 8px; text-align: left; min-width: 0; padding: 9px; border: 1px solid var(--line-strong); border-radius: 8px; background: #20211d; cursor: pointer; }
-.demo-button:hover { border-color: rgba(196,238,118,.4); background: #292b24; }
-.demo-button > span { color: var(--acid); font-size: 15px; }
-.demo-button strong { min-width: 0; flex: 1; font-size: 9px; }
-.demo-button small { display: block; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 8px; font-weight: 400; margin-top: 4px; }
-.demo-button i { color: var(--muted); font: normal 12px var(--sans); }
 .auth-disclaimer { margin: 14px 0 0; color: #6f7269; text-align: center; font-size: 8px; }
 .modal-card { width: min(100%, 410px); padding: 22px; border: 1px solid var(--line-strong); border-radius: 14px; background: #1a1b18; box-shadow: var(--shadow); }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }

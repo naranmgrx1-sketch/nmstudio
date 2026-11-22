@@ -201,7 +201,7 @@
   function requireAdmin() {
     const user = window.NMAuth && window.NMAuth.getCurrentUser();
     if (!user || user.role !== 'admin') {
-      announce('Database and sync controls are available to the admin demo role.');
+      announce('Database and sync controls are available to accounts with the admin role.');
       return false;
     }
     return true;

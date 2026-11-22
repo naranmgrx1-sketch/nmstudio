@@ -31,8 +31,7 @@
         <div class="account-card">
           <div class="avatar" id="userAvatar">N</div>
           <div class="account-copy"><strong id="userName">Listener</strong><small id="userRole">CUSTOMER</small></div>
-          <button class="icon-button small" id="roleSwitch" title="Switch demo role" aria-label="Switch demo role">⇄</button>
-          <button class="icon-button small" id="signOut" title="Sign out" aria-label="Sign out">↗</button>
+          <button class="logout-button" id="signOut" type="button"><span aria-hidden="true">↗</span> Log out</button>
         </div>
       </div>
     </aside>
@@ -51,6 +50,7 @@
         <button data-view="playlists"><span>▧</span> Playlists</button>
         <button data-view="liked"><span>♥</span> Liked</button>
         <button class="hidden" id="mobileAdminNav" data-view="admin"><span>◈</span> Sync</button>
+        <button class="mobile-logout" id="mobileSignOut" type="button"><span aria-hidden="true">↗</span> Log out</button>
       </nav>
       <div class="stage-scroll" id="stageScroll">
         <section id="homeView" class="view">
@@ -228,7 +228,7 @@
   <div id="authOverlay" class="overlay auth-overlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
     <section class="auth-card">
       <a class="brand auth-brand" href="#" aria-label="NMStudio"><span class="brand-mark">n<span>m</span></span><span>NM<span class="brand-light">Studio</span><small>YOUR LISTENING ROOM</small></span></a>
-      <span class="eyebrow">MAKE YOURSELF AT HOME</span><h1 id="authTitle">Your music.<br><em>Your space.</em></h1><p class="auth-intro">Sign in to pick up where you left off. This demo keeps everything on this device.</p>
+      <span class="eyebrow">MAKE YOURSELF AT HOME</span><h1 id="authTitle">Your music.<br><em>Your space.</em></h1><p class="auth-intro">Sign in each time you open NMStudio. Your local library stays on this device.</p>
       <div class="auth-tabs"><button class="active" data-auth-tab="signin">Sign in</button><button data-auth-tab="signup">Create account</button></div>
       <form id="signInForm" class="auth-form">
         <label>Email<input name="email" type="email" autocomplete="username" required placeholder="you@example.com"></label>
@@ -239,11 +239,10 @@
         <label>Your name<input name="name" autocomplete="name" required maxlength="50" placeholder="How should we call you?"></label>
         <label>Email<input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
         <label>Password<input name="password" type="password" autocomplete="new-password" minlength="4" required placeholder="At least 4 characters"></label>
-        <label>Demo role<select name="role"><option value="customer">Customer · listen & make playlists</option><option value="admin">Admin · manage your local catalog</option></select></label>
+        <label>Account role<select name="role"><option value="customer">Customer · listen & make playlists</option><option value="admin">Admin · manage your local catalog</option></select></label>
         <button class="button button-primary auth-submit" type="submit">Create local account <span>→</span></button>
       </form>
-      <div class="demo-access"><span class="eyebrow">OR TRY A DEMO SPACE</span><div><button class="demo-button" data-demo-role="customer"><span>◉</span><strong>Listener demo<small>user@nmstudio.local</small></strong><i>→</i></button><button class="demo-button" data-demo-role="admin"><span>◈</span><strong>Studio demo<small>admin@nmstudio.local</small></strong><i>→</i></button></div></div>
-      <p class="auth-disclaimer">Local-only demo · Not a secure authentication service</p>
+      <p class="auth-disclaimer">Local accounts only · Not a secure authentication service</p>
     </section>
   </div>
   <div id="modalOverlay" class="overlay hidden" role="presentation">

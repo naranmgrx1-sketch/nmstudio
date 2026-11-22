@@ -42,6 +42,9 @@
 .account-copy strong { font-size: 11px; }
 .account-copy small { color: var(--muted); font: 9px var(--mono); margin-top: 3px; }
 .account-card .icon-button { flex: 0 0 25px; width: 25px; height: 25px; font-size: 14px; }
+.logout-button { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; padding: 6px 7px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--muted); font-size: 9px; cursor: pointer; transition: color var(--ease), border-color var(--ease), background var(--ease); }
+.logout-button span { font-size: 12px; }
+.logout-button:hover { border-color: rgba(228,154,126,.25); background: rgba(228,154,126,.06); color: #efad96; }
 .main-panel { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; overflow: hidden; }
 .topbar { height: 66px; flex: 0 0 66px; display: flex; align-items: center; gap: 14px; padding: 0 24px; border-bottom: 1px solid var(--line); background: rgba(23, 24, 21, .78); backdrop-filter: blur(12px); }
 .mobile-nav { display: none; }
@@ -183,6 +186,8 @@
   .mobile-nav button span { color: #a4a69c; font-size: 12px; }
   .mobile-nav button.active { background: #252720; color: var(--ink); }
   .mobile-nav button.active span { color: var(--acid); }
+  .mobile-nav button.mobile-logout { border: 1px solid rgba(228,154,126,.14); color: #e8a691; }
+  .mobile-nav button.mobile-logout span { color: #e8a691; }
   .mobile-brand { display: flex; white-space: nowrap; }
   .search-box { flex: 1; width: auto; gap: 6px; padding: 0 8px; }
   .search-box kbd { display: none; }

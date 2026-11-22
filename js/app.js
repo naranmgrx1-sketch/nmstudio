@@ -127,7 +127,7 @@
   function setView(view, playlistId) {
     const user = currentUser();
     if (view === 'admin' && (!user || user.role !== 'admin')) {
-      announce('Studio controls are only available in the admin demo role.');
+      announce('Studio controls are only available to accounts with the admin role.');
       view = 'home';
     }
     state.view = view;
@@ -147,11 +147,10 @@
     const user = currentUser();
     if (!user) return;
     $('#userName').textContent = user.name;
-    $('#userRole').textContent = user.role.toUpperCase() + (user.demo ? ' · DEMO' : ' · LOCAL');
+    $('#userRole').textContent = user.role.toUpperCase() + ' · LOCAL';
     $('#userAvatar').textContent = user.name.trim().charAt(0).toUpperCase() || 'N';
     $('#adminNav').classList.toggle('hidden', user.role !== 'admin');
     $('#mobileAdminNav').classList.toggle('hidden', user.role !== 'admin');
-    $('#roleSwitch').classList.toggle('hidden', !user.demo);
     const likedCount = NMStore.getLikedIds().length;
     $('#likedCount').textContent = likedCount + (likedCount === 1 ? ' track' : ' tracks');
     $('#playlistNav').innerHTML = playlists().map(function (playlist) {
@@ -394,6 +393,18 @@
   function showAuth() {
     $('#authOverlay').classList.remove('hidden');
     $('#appShell').classList.add('hidden');
+  }
+
+  function logOut() {
+    NMAudio.pause();
+    NMAuth.signOut();
+    $('#signInForm').reset();
+    $('#signUpForm').reset();
+    $$('.auth-tabs button').forEach(function (button, index) { button.classList.toggle('active', index === 0); });
+    $('#signInForm').classList.remove('hidden');
+    $('#signUpForm').classList.add('hidden');
+    showAuth();
+    $('#signInForm input[name="email"]').focus();
   }
 
   function enterApp() {
@@ -658,16 +669,8 @@
         $('#mobileSessionButton').setAttribute('aria-expanded', 'false');
       }
     });
-    $('#signOut').addEventListener('click', function () { NMAudio.pause(); NMAuth.signOut(); showAuth(); });
-    $('#roleSwitch').addEventListener('click', function () {
-      try {
-        const user = NMAuth.switchDemoRole();
-        if (user.role !== 'admin' && state.view === 'admin') state.view = 'home';
-        render();
-        setView(state.view);
-        announce('Switched to the ' + user.role + ' demo role.');
-      } catch (error) { announce(error.message); }
-    });
+    $('#signOut').addEventListener('click', logOut);
+    $('#mobileSignOut').addEventListener('click', logOut);
     $('#modalOverlay').addEventListener('click', function (event) { if (event.target === $('#modalOverlay')) closeModal(); });
     $('#modalContent').addEventListener('submit', function (event) {
       if (event.target.id !== 'playlistForm') return;
@@ -685,12 +688,6 @@
         $$('.auth-tabs button').forEach(function (tab) { tab.classList.toggle('active', tab === button); });
         $('#signInForm').classList.toggle('hidden', signup);
         $('#signUpForm').classList.toggle('hidden', !signup);
-      });
-    });
-    $$('[data-demo-role]').forEach(function (button) {
-      button.addEventListener('click', function () {
-        try { NMAuth.demoLogin(button.dataset.demoRole); enterApp(); }
-        catch (error) { announce(error.message); }
       });
     });
     $('#signInForm').addEventListener('submit', function (event) {

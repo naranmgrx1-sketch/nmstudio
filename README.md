@@ -6,9 +6,9 @@ A client-side music player and creative listening space built with plain HTML, C
 
 Open `index.html` in a modern browser, or use VS Code Live Server. Audio playback and uploaded-file persistence work best in a current Chromium, Firefox, or Safari browser.
 
-## Try the demo
+## Create an account
 
-Choose **Listener demo** or **Studio demo** on the sign-in screen. Demo role switching is available from the account controls in the left sidebar. You can also create a local account with the sign-up form.
+Choose **Create account** on the sign-in screen and select a customer or admin role. Sign in with that local account on later visits; NMStudio asks you to sign in each time the page is opened.
 
 ## What’s included
 
@@ -17,6 +17,7 @@ Choose **Listener demo** or **Studio demo** on the sign-in screen. Demo role swi
 - Playback queue, seek, volume, shuffle, repeat, a live visualizer, and three-band EQ.
 - Studio controls for publishing audio, URLs, and synth previews, plus JSON backup and restore.
 - Admin database dashboard with local-only status, connection configuration, backup controls, and a filterable storage inspector.
+- Sign-in on each app launch, with visible logout actions on desktop and mobile.
 - Nepali artist discovery links for Sujan Chapagain, Yabesh Thapa, Sabin Rai, and Purna Rai.
 - Local browser storage using `localStorage` and IndexedDB where available.
 - Keyboard controls: `/` focuses search, Space toggles playback, and Alt+Left/Right skips tracks.
@@ -48,7 +49,7 @@ The form saves non-secret connection fields in browser storage. Passwords/API to
 
 ## Privacy and security
 
-All accounts, roles, and music data stay in this browser; this app does not connect to a backend. Local sign-in and role selection are for demonstration only, not secure authentication. Uploaded audio is stored in this browser’s IndexedDB and is not uploaded to a server. A browser may restrict IndexedDB when opening a local file directly; Live Server can provide more consistent storage in that case. Backups can contain your uploaded audio files, so store and share them carefully.
+Accounts and music data stay in this browser; this app does not connect to a backend. NMStudio asks you to sign in each time the page is opened; logging out or closing/reloading the page ends the local session without deleting your library or account. Local sign-in and the self-selected account role are not secure authentication or access control. Uploaded audio is stored in this browser’s IndexedDB and is not uploaded to a server. A browser may restrict IndexedDB when opening a local file directly; Live Server can provide more consistent storage in that case. Backups can contain your uploaded audio files, so store and share them carefully.
 
 Direct audio URLs depend on the hosting server allowing playback. Browser security restrictions may prevent a cross-origin audio stream from being analyzed by the visualizer or EQ.
 
