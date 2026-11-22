@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NMplayer — Music Streaming, Playlists & Admin Studio</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            nm: {
+              black: '#000000',
+              base: '#121212',
+              surface: '#181818',
+              elevated: '#242424',
+              highlight: '#2a2a2a',
+              green: '#1DB954',
+              greenHover: '#1ed760',
+              subtext: '#b3b3b3',
+              muted: '#727272'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.18);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.34);
+    }
+
+    /* Custom Range Sliders */
+    input[type="range"].nm-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"].nm-slider::-webkit-slider-runnable-track {
+      height: 4px;
+      border-radius: 9999px;
+    }
+    input[type="range"].nm-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 12px;
+      width: 12px;
+      border-radius: 50%;
+      background: #ffffff;
+      margin-top: -4px;
+      opacity: 0;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+    }
+    .slider-group:hover input[type="range"].nm-slider::-webkit-slider-thumb,
+    input[type="range"].nm-slider:focus::-webkit-slider-thumb {
+      opacity: 1;
+    }
+    .slider-group:hover input[type="range"].nm-slider::-webkit-slider-thumb {
+      transform: scale(1.15);
+    }
+
+    /* Live Equalizer Animation */
+    @keyframes eqBounce {
+      0%, 100% { height: 22%; }
+      50% { height: 100%; }
+    }
+    .eq-bar {
+      animation: eqBounce 0.8s ease-in-out infinite;
+    }
+    .eq-bar:nth-child(1) { animation-delay: 0.0s; }
+    .eq-bar:nth-child(2) { animation-delay: 0.2s; }
+    .eq-bar:nth-child(3) { animation-delay: 0.4s; }
+    .eq-bar:nth-child(4) { animation-delay: 0.15s; }
+    .eq-paused .eq-bar {
+      animation-play-state: paused;
+      height: 25% !important;
+    }
+
+    /* Glass Top Bar */
+    .glass-header {
+      background: rgba(18, 18, 18, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+  </style>
+</head>
+<body class="bg-nm-black text-white font-sans antialiased selection:bg-nm-green selection:text-black h-screen flex flex-col overflow-hidden">
+
+  <!-- Hidden File Inputs -->
+  <input type="file" id="customerAudioInput" accept=".mp3,.wav,.ogg,audio/*" multiple class="hidden" />
+  <input type="file" id="adminAudioInput" accept=".mp3,.wav,.ogg,audio/*" class="hidden" />
+
+  <!-- ========================================================================
+       SCREEN 1: SIGN IN & SIGN UP AUTHENTICATION SCREEN
+       ======================================================================== -->
+  <section id="authScreen" class="fixed inset-0 z-50 bg-gradient-to-br from-[#0d1f15] via-nm-black to-nm-base flex items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-md bg-nm-surface/95 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl my-auto">
+      <!-- Brand Header -->
+      <div class="flex flex-col items-center text-center mb-6">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-nm-green to-emerald-700 flex items-center justify-center shadow-lg shadow-nm-green/25 mb-3">
+          <i class="fa-solid fa-wave-square text-black text-2xl"></i>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+          NM<span class="text-nm-green">player</span>
+        </h1>
+        <p class="text-xs sm:text-sm text-nm-subtext mt-1">
+          Stream tracks, craft playlists &amp; manage catalog standalone
+        </p>
+      </div>
+
+      <!-- Mode Switch Tabs: Sign In / Sign Up -->
+      <div class="grid grid-cols-2 bg-nm-black p-1 rounded-xl border border-white/10 mb-5">
+        <button type="button" id="tabSignIn" onclick="switchAuthTab('signin')" class="py-2.5 rounded-lg text-xs sm:text-sm font-bold bg-nm-elevated text-white shadow transition-all">
+          Sign In
+        </button>
+        <button type="button" id="tabSignUp" onclick="switchAuthTab('signup')" class="py-2.5 rounded-lg text-xs sm:text-sm font-bold text-nm-subtext hover:text-white transition-all">
+          Sign Up
+        </button>
+      </div>
+
+      <!-- Auth Error / Info Banner -->
+      <div id="authMessage" class="hidden mb-4 px-3.5 py-2.5 rounded-xl text-xs font-medium border"></div>
+
+      <!-- SIGN IN FORM -->
+      <form id="signInForm" onsubmit="handleSignIn(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1.5">Email Address</label>
+          <div class="relative">
+            <i class="fa-regular fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-nm-subtext text-sm"></i>
+            <input type="email" id="loginEmail" required placeholder="you@nmplayer.com" class="w-full bg-nm-elevated border border-white/10 focus:border-nm-green rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-nm-muted outline-none transition-colors" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1.5">Password</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-nm-subtext text-sm"></i>
+            <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-nm-elevated border border-white/10 focus:border-nm-green rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-nm-muted outline-none transition-colors" />
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-full bg-nm-green hover:bg-nm-greenHover text-black text-sm font-extrabold shadow-lg shadow-nm-green/25 transition-all hover:scale-[1.01] active:scale-[0.99]">
+          Sign In to NMplayer
+        </button>
+      </form>
+
+      <!-- SIGN UP FORM -->
+      <form id="signUpForm" onsubmit="handleSignUp(event)" class="hidden space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1.5">Full Name / Username</label>
+          <input type="text" id="regName" required maxlength="50" placeholder="Alex Rivera" class="w-full bg-nm-elevated border border-white/10 focus:border-nm-green rounded-xl px-4 py-2.5 text-sm text-white placeholder-nm-muted outline-none transition-colors" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1.5">Email Address</label>
+          <input type="email" id="regEmail" required placeholder="alex@example.com" class="w-full bg-nm-elevated border border-white/10 focus:border-nm-green rounded-xl px-4 py-2.5 text-sm text-white placeholder-nm-muted outline-none transition-colors" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1.5">Password</label>
+          <input type="password" id="regPassword" required minlength="4" placeholder="Create a password (min 4 chars)" class="w-full bg-nm-elevated border border-white/10 focus:border-nm-green rounded-xl px-4 py-2.5 text-sm text-white placeholder-nm-muted outline-none transition-colors" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1.5">Account Role</label>
+          <select id="regRole" class="w-full bg-nm-elevated border border-white/10 focus:border-nm-green rounded-xl px-4 py-2.5 text-sm text-white outline-none transition-colors">
+            <option value="customer">Customer (Music Listener &amp; Playlists)</option>
+            <option value="admin">Admin (Catalog &amp; User Control Panel)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-full bg-nm-green hover:bg-nm-greenHover text-black text-sm font-extrabold shadow-lg shadow-nm-green/25 transition-all hover:scale-[1.01] active:scale-[0.99] mt-1">
+          Create Account
+        </button>
+      </form>
+
+      <!-- One-Click Demo Logins -->
+      <div class="mt-6 pt-5 border-t border-white/10">
+        <p class="text-[11px] font-bold uppercase tracking-wider text-nm-subtext text-center mb-3">
+          One-Click Demo Access
+        </p>
+        <div class="grid grid-cols-2 gap-2.5">
+          <button type="button" onclick="quickDemoLogin('customer')" class="flex flex-col items-center justify-center p-2.5 rounded-xl bg-nm-elevated hover:bg-nm-highlight border border-white/10 transition-colors group">
+            <span class="text-xs font-bold text-white group-hover:text-nm-green flex items-center gap-1.5">
+              <i class="fa-solid fa-headphones text-nm-green"></i> Customer Demo
+            </span>
+            <span class="text-[10px] text-nm-subtext mt-0.5 truncate max-w-full">user@nmplayer.com</span>
+          </button>
+
+          <button type="button" onclick="quickDemoLogin('admin')" class="flex flex-col items-center justify-center p-2.5 rounded-xl bg-nm-elevated hover:bg-nm-highlight border border-white/10 transition-colors group">
+            <span class="text-xs font-bold text-white group-hover:text-amber-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-shield-halved text-amber-400"></i> Admin Demo
+            </span>
+            <span class="text-[10px] text-nm-subtext mt-0.5 truncate max-w-full">admin@nmplayer.com</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SCREEN 2: AUTHENTICATED APP SHELL (CUSTOMER DASHBOARD + ADMIN PANEL)
+       ======================================================================== -->
+  <div id="appShell" class="hidden flex-1 flex-col overflow-hidden h-full">
+    <div class="flex flex-1 overflow-hidden p-0 sm:p-2 sm:pb-0 gap-2 relative">
+
+      <!-- Mobile Sidebar Backdrop -->
+      <div id="mobileBackdrop" onclick="toggleMobileSidebar(false)" class="fixed inset-0 bg-black/70 z-30 hidden lg:hidden"></div>
+
+      <!-- LEFT SIDEBAR -->
+      <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-72 bg-nm-black lg:bg-transparent flex flex-col gap-2 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-out p-2 lg:p-0">
+        <!-- Brand & Main Nav Card -->
+        <div class="bg-nm-base rounded-xl p-4 flex flex-col gap-3.5 shadow-lg">
+          <div class="flex items-center justify-between">
+            <div onclick="switchPortalMode('customer'); navigateCustomerView('home');" class="flex items-center gap-3 cursor-pointer group">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-nm-green to-emerald-700 flex items-center justify-center shadow-md shadow-nm-green/20 group-hover:scale-105 transition-transform">
+                <i class="fa-solid fa-wave-square text-black text-lg"></i>
+              </div>
+              <div>
+                <span class="text-xl font-extrabold tracking-tight text-white">NM<span class="text-nm-green">player</span></span>
+                <span id="sidebarRoleBadge" class="block text-[10px] uppercase tracking-widest text-nm-green font-bold -mt-0.5">Customer</span>
+              </div>
+            </div>
+            <button onclick="toggleMobileSidebar(false)" class="lg:hidden w-8 h-8 rounded-full bg-nm-elevated text-nm-subtext hover:text-white flex items-center justify-center">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <!-- Customer Nav Links -->
+          <nav id="customerSidebarNav" class="flex flex-col gap-1">
+            <button id="cnav-home" onclick="switchPortalMode('customer'); navigateCustomerView('home');" class="flex items-center gap-3.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-white bg-nm-elevated transition-colors">
+              <i class="fa-solid fa-house text-base w-5 text-center"></i>
+              <span>Home</span>
+            </button>
+            <button id="cnav-search" onclick="switchPortalMode('customer'); focusSearchInput();" class="flex items-center gap-3.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-nm-subtext hover:text-white hover:bg-nm-surface transition-colors">
+              <i class="fa-solid fa-magnifying-glass text-base w-5 text-center"></i>
+              <span>Search</span>
+            </button>
+            <button id="cnav-library" onclick="switchPortalMode('customer'); navigateCustomerView('library');" class="flex items-center gap-3.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-nm-subtext hover:text-white hover:bg-nm-surface transition-colors">
+              <i class="fa-solid fa-compact-disc text-base w-5 text-center"></i>
+              <span>Your Library</span>
+            </button>
+          </nav>
+
+          <!-- Admin Switcher (Visible to Admins) -->
+          <div id="adminSidebarSwitcher" class="hidden pt-2 border-t border-white/10">
+            <button id="btnSwitchAdminPanel" onclick="switchPortalMode('admin')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 text-amber-300 text-xs font-bold transition-colors">
+              <span class="flex items-center gap-2.5">
+                <i class="fa-solid fa-shield-halved text-sm"></i>
+                <span>Admin Control Panel</span>
+              </span>
+              <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Playlists Card -->
+        <div class="bg-nm-base rounded-xl flex-1 flex flex-col overflow-hidden shadow-lg">
+          <div class="p-4 pb-2 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-nm-subtext">
+              <i class="fa-solid fa-layer-group text-sm"></i>
+              <span class="text-sm font-bold">Playlists</span>
+            </div>
+            <button onclick="openCreatePlaylistModal()" class="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-nm-elevated hover:bg-nm-highlight text-xs font-semibold text-white transition-transform hover:scale-105">
+              <i class="fa-solid fa-plus text-nm-green"></i>
+              <span>Create</span>
+            </button>
+          </div>
+
+          <!-- Liked Songs Pinned Item -->
+          <div class="px-2 pt-1">
+            <button id="cnav-liked" onclick="switchPortalMode('customer'); navigateCustomerView('liked');" class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-nm-surface transition-colors text-left group">
+              <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-600 via-purple-600 to-emerald-400 flex items-center justify-center flex-shrink-0 shadow">
+                <i class="fa-solid fa-heart text-white text-xs"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-white truncate group-hover:text-nm-green transition-colors">Liked Songs</p>
+                <p class="text-xs text-nm-subtext"><span id="sidebarLikedCount">0</span> songs</p>
+              </div>
+            </button>
+          </div>
+
+          <div class="border-t border-white/5 my-2 mx-4"></div>
+
+          <!-- User Playlists List -->
+          <div id="sidebarPlaylistList" class="flex-1 overflow-y-auto px-2 pb-4 space-y-1"></div>
+        </div>
+      </aside>
+
+      <!-- MAIN SCROLLABLE CONTENT -->
+      <main id="mainScrollArea" class="flex-1 bg-nm-base sm:rounded-xl overflow-y-auto flex flex-col relative shadow-xl">
+
+        <!-- Sticky Top Header -->
+        <header class="sticky top-0 z-20 glass-header px-4 sm:px-6 py-3 flex items-center justify-between gap-3 border-b border-white/5">
+          <div class="flex items-center gap-3 flex-1 max-w-xl">
+            <button onclick="toggleMobileSidebar(true)" class="lg:hidden w-10 h-10 rounded-full bg-nm-elevated hover:bg-nm-highlight flex items-center justify-center text-white flex-shrink-0">
+              <i class="fa-solid fa-bars"></i>
+            </button>
+
+            <!-- Search Input (Customer Mode) -->
+            <div id="searchBarWrapper" class="relative flex-1">
+              <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-nm-subtext text-sm"></i>
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Search songs, artists, or albums..."
+                oninput="handleSearchInput(this.value)"
+                class="w-full bg-nm-elevated hover:bg-nm-highlight focus:bg-nm-highlight text-sm text-white placeholder-nm-subtext pl-10 pr-9 py-2 rounded-full border border-transparent focus:border-white/20 outline-none transition-all"
+              />
+              <button id="clearSearchBtn" onclick="clearSearchInput()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-nm-subtext hover:text-white text-xs">
+                <i class="fa-solid fa-circle-xmark"></i>
+              </button>
+            </div>
+
+            <!-- Admin Header Title Badge -->
+            <div id="adminHeaderTitle" class="hidden items-center gap-2.5">
+              <span class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-extrabold uppercase tracking-wider border border-amber-400/30">
+                Admin Console
+              </span>
+              <span class="text-sm font-bold text-white hidden sm:inline">Catalog &amp; User Management</span>
+            </div>
+          </div>
+
+          <!-- Right Actions: Upload / URL / Preview Switch / Current User & Logout -->
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <div id="customerHeaderActions" class="flex items-center gap-2">
+              <button onclick="openAddUrlModal(false)" class="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-full bg-nm-elevated hover:bg-nm-highlight text-xs font-semibold text-white border border-white/10 transition-colors">
+                <i class="fa-solid fa-link text-nm-green"></i>
+                <span>Add URL</span>
+              </button>
+              <button onclick="triggerCustomerFileUpload()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-nm-green hover:bg-nm-greenHover text-black text-xs font-bold shadow-md shadow-nm-green/20 transition-transform hover:scale-105">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span class="hidden sm:inline">Upload Audio</span>
+              </button>
+            </div>
+
+            <!-- Quick Preview Customer Player Button inside Admin Panel -->
+            <button id="previewCustomerBtn" onclick="switchPortalMode('customer')" class="hidden items-center gap-1.5 px-3.5 py-2 rounded-full bg-nm-green hover:bg-nm-greenHover text-black text-xs font-bold transition-transform hover:scale-105">
+              <i class="fa-solid fa-headphones"></i>
+              <span>Customer Player</span>
+            </button>
+
+            <!-- Active User Pill & Sign Out -->
+            <div class="flex items-center gap-2 pl-2 border-l border-white/10">
+              <div class="hidden xl:block text-right leading-tight">
+                <div id="headerUserName" class="text-xs font-bold text-white">User</div>
+                <div id="headerUserRole" class="text-[10px] uppercase tracking-wider text-nm-subtext">customer</div>
+              </div>
+              <button onclick="handleLogout()" title="Sign Out" class="flex items-center gap-1.5 px-3 py-2 rounded-full bg-nm-elevated hover:bg-red-500/20 text-nm-subtext hover:text-red-300 text-xs font-semibold transition-colors">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span class="hidden sm:inline">Logout</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!-- ====================================================================
+             CUSTOMER MUSIC DASHBOARD VIEW
+             ==================================================================== -->
+        <div id="customerDashboardView" class="flex-1 flex flex-col">
+          <!-- Hero Banner -->
+          <section id="customerHero" class="px-4 sm:px-8 pt-6 pb-6 bg-gradient-to-b from-emerald-900/40 via-nm-base/80 to-nm-base flex flex-col sm:flex-row items-center sm:items-end gap-6">
+            <div id="heroArtwork" class="w-36 h-36 sm:w-44 sm:h-44 rounded-2xl shadow-2xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-nm-green to-emerald-950">
+              <i class="fa-solid fa-wave-square text-5xl text-black/85"></i>
+            </div>
+            <div class="flex-1 text-center sm:text-left min-w-0">
+              <span id="heroTag" class="inline-block text-xs font-bold uppercase tracking-widest text-nm-green mb-1">Featured Mix</span>
+              <h1 id="heroHeading" class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white truncate pb-1">All Songs</h1>
+              <p id="heroSub" class="text-sm text-nm-subtext mt-1 line-clamp-2">Built-in Web Audio synth tracks, admin-published catalog, and your uploaded files.</p>
+              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs font-medium text-nm-subtext mt-3">
+                <span class="text-white font-bold">NMplayer</span>
+                <span>•</span>
+                <span id="heroTrackCount">0 songs</span>
+                <span>•</span>
+                <span id="heroTotalDuration">0 min 0 sec</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Playback Action Strip -->
+          <section class="px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <button onclick="playCurrentCustomerList(false)" title="Play All" class="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-nm-green hover:bg-nm-greenHover text-black flex items-center justify-center text-lg shadow-xl shadow-nm-green/25 hover:scale-105 active:scale-95 transition-all">
+                <i class="fa-solid fa-play ml-0.5"></i>
+              </button>
+              <button onclick="playCurrentCustomerList(true)" title="Shuffle Play" class="w-10 h-10 rounded-full bg-nm-elevated hover:bg-nm-highlight text-nm-subtext hover:text-nm-green flex items-center justify-center text-sm transition-colors">
+                <i class="fa-solid fa-shuffle"></i>
+              </button>
+              <button id="deletePlaylistActionBtn" onclick="deleteActivePlaylist()" class="hidden px-3.5 py-2 rounded-full bg-red-500/15 hover:bg-red-500/25 text-red-300 text-xs font-semibold items-center gap-1.5 transition-colors">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>Delete Playlist</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- Playlists Grid (Home / Library when not searching) -->
+          <section id="playlistsGridSection" class="px-4 sm:px-8 pb-6">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-bold text-white tracking-tight">Playlists</h2>
+              <button onclick="openCreatePlaylistModal()" class="text-xs font-semibold text-nm-subtext hover:text-nm-green transition-colors">+ New Playlist</button>
+            </div>
+            <div id="customerPlaylistCards" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4"></div>
+          </section>
+
+          <!-- Songs Table -->
+          <section class="px-4 sm:px-8 pb-12 flex-1">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-bold text-white tracking-tight">Tracks</h2>
+              <span id="activeSearchBadge" class="hidden text-xs bg-nm-green/15 text-nm-green px-3 py-1 rounded-full font-semibold"></span>
+            </div>
+
+            <div class="grid grid-cols-[32px_1fr_auto] md:grid-cols-[40px_2.2fr_1.3fr_75px_110px] items-center gap-3 px-3 py-2 border-b border-white/10 text-xs font-semibold uppercase tracking-wider text-nm-subtext select-none">
+              <div class="text-center">#</div>
+              <div>Title &amp; Artist</div>
+              <div class="hidden md:block">Album</div>
+              <div class="hidden md:flex justify-end pr-2"><i class="fa-regular fa-clock"></i></div>
+              <div class="text-right pr-1">Actions</div>
+            </div>
+
+            <div id="customerSongRows" class="divide-y divide-white/[0.03] mt-1"></div>
+
+            <div id="customerEmptyState" class="hidden py-14 text-center flex flex-col items-center justify-center">
+              <div class="w-14 h-14 rounded-full bg-nm-elevated flex items-center justify-center text-nm-subtext text-xl mb-3">
+                <i class="fa-solid fa-music"></i>
+              </div>
+              <h3 class="text-base font-bold text-white">No tracks match this view</h3>
+              <p class="text-xs text-nm-subtext mt-1 max-w-sm">Try clearing your search, switching playlists, or uploading an audio file.</p>
+            </div>
+          </section>
+        </div>
+
+        <!-- ====================================================================
+             ADMIN CONTROL PANEL VIEW
+             ==================================================================== -->
+        <div id="adminPanelView" class="hidden flex-1 flex-col p-4 sm:p-8 space-y-6 pb-14">
+          <!-- Admin Banner -->
+          <div class="bg-gradient-to-r from-amber-500/20 via-nm-surface to-nm-elevated border border-amber-400/25 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span class="text-[11px] font-extrabold uppercase tracking-widest text-amber-400">Administrator Workspace</span>
+              <h1 class="text-2xl sm:text-3xl font-extrabold text-white mt-0.5">NMplayer Control Panel</h1>
+              <p class="text-xs sm:text-sm text-nm-subtext mt-1">Publish tracks to the customer catalog, remove songs, and manage registered accounts.</p>
+            </div>
+            <button onclick="switchPortalMode('customer')" class="px-4 py-2.5 rounded-full bg-nm-green hover:bg-nm-greenHover text-black text-xs font-extrabold flex items-center gap-2 self-start sm:self-center shadow-lg shadow-nm-green/20 transition-transform hover:scale-105">
+              <i class="fa-solid fa-play"></i>
+              <span>Switch to Customer Player</span>
+            </button>
+          </div>
+
+          <!-- Platform Metrics -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-nm-surface border border-white/10 rounded-2xl p-5">
+              <div class="flex items-center justify-between text-nm-subtext text-xs font-bold uppercase tracking-wider">
+                <span>Catalog Tracks</span>
+                <i class="fa-solid fa-compact-disc text-nm-green text-base"></i>
+              </div>
+              <p id="statTotalTracks" class="text-3xl font-extrabold text-white mt-2">0</p>
+            </div>
+
+            <div class="bg-nm-surface border border-white/10 rounded-2xl p-5">
+              <div class="flex items-center justify-between text-nm-subtext text-xs font-bold uppercase tracking-wider">
+                <span>Registered Users</span>
+                <i class="fa-solid fa-users text-amber-400 text-base"></i>
+              </div>
+              <p id="statTotalUsers" class="text-3xl font-extrabold text-white mt-2">0</p>
+            </div>
+
+            <div class="bg-nm-surface border border-white/10 rounded-2xl p-5">
+              <div class="flex items-center justify-between text-nm-subtext text-xs font-bold uppercase tracking-wider">
+                <span>Total Playlists</span>
+                <i class="fa-solid fa-layer-group text-emerald-400 text-base"></i>
+              </div>
+              <p id="statTotalPlaylists" class="text-3xl font-extrabold text-white mt-2">0</p>
+            </div>
+          </div>
+
+          <!-- Publish New Track Card -->
+          <div class="bg-nm-surface border border-white/10 rounded-2xl p-5 sm:p-6">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-up text-nm-green"></i>
+                <span>Publish New Track to Catalog</span>
+              </h2>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="triggerAdminFileUpload()" class="px-3.5 py-1.5 rounded-full bg-nm-elevated hover:bg-nm-highlight text-xs font-semibold text-white border border-white/10 flex items-center gap-1.5">
+                  <i class="fa-solid fa-file-audio text-nm-green"></i>
+                  <span id="adminSelectedFileName">Choose Audio File (.mp3/.wav/.ogg)</span>
+                </button>
+                <button type="button" onclick="openAddUrlModal(true)" class="px-3.5 py-1.5 rounded-full bg-nm-elevated hover:bg-nm-highlight text-xs font-semibold text-white border border-white/10 flex items-center gap-1.5">
+                  <i class="fa-solid fa-link text-amber-400"></i>
+                  <span>Publish from URL</span>
+                </button>
+              </div>
+            </div>
+
+            <form id="adminPublishForm" onsubmit="handleAdminPublishFileTrack(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <input type="text" id="adminTrackTitle" required placeholder="Track Title *" class="bg-nm-elevated border border-white/10 focus:border-nm-green rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-nm-muted outline-none" />
+              <input type="text" id="adminTrackArtist" required placeholder="Artist Name *" class="bg-nm-elevated border border-white/10 focus:border-nm-green rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-nm-muted outline-none" />
+              <input type="text" id="adminTrackAlbum" placeholder="Album (default: Admin Release)" class="bg-nm-elevated border border-white/10 focus:border-nm-green rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-nm-muted outline-none" />
+              <button type="submit" class="rounded-xl bg-nm-green hover:bg-nm-greenHover text-black text-sm font-extrabold py-2.5 px-4 shadow-md shadow-nm-green/20 transition-transform hover:scale-[1.01]">
+                Publish File Track
+              </button>
+            </form>
+          </div>
+
+          <!-- Admin Catalog Table -->
+          <div class="bg-nm-surface border border-white/10 rounded-2xl p-5 sm:p-6">
+            <h2 class="text-lg font-bold text-white mb-3">Catalog Tracks</h2>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr class="border-b border-white/10 text-xs uppercase tracking-wider text-nm-subtext">
+                    <th class="py-2.5 px-3">Title</th>
+                    <th class="py-2.5 px-3">Artist</th>
+                    <th class="py-2.5 px-3 hidden sm:table-cell">Album</th>
+                    <th class="py-2.5 px-3">Source</th>
+                    <th class="py-2.5 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCatalogTableBody" class="divide-y divide-white/5"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Admin Users Management Table -->
+          <div class="bg-nm-surface border border-white/10 rounded-2xl p-5 sm:p-6">
+            <h2 class="text-lg font-bold text-white mb-3">Registered Users</h2>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr class="border-b border-white/10 text-xs uppercase tracking-wider text-nm-subtext">
+                    <th class="py-2.5 px-3">User</th>
+                    <th class="py-2.5 px-3 hidden md:table-cell">Email</th>
+                    <th class="py-2.5 px-3">Role</th>
+                    <th class="py-2.5 px-3 text-right">Manage</th>
+                  </tr>
+                </thead>
+                <tbody id="adminUsersTableBody" class="divide-y divide-white/5"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- ======================================================================
+         PERSISTENT BOTTOM PLAYER BAR
+         ====================================================================== -->
+    <footer class="h-24 bg-nm-black border-t border-white/10 px-3 sm:px-5 flex items-center justify-between gap-2 sm:gap-4 z-30 select-none">
+      <!-- Track Info -->
+      <div class="flex items-center gap-3 w-1/3 sm:w-[30%] min-w-0">
+        <div id="playerArtwork" class="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-nm-elevated flex-shrink-0 flex items-center justify-center shadow-md">
+          <i class="fa-solid fa-music text-nm-subtext"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <h4 id="playerTrackTitle" class="text-xs sm:text-sm font-bold text-white truncate">Select a track</h4>
+            <span id="playerTrackBadge" class="hidden sm:inline-block text-[10px] px-1.5 py-0.5 rounded bg-nm-elevated text-nm-green font-bold uppercase">Synth</span>
+          </div>
+          <p id="playerTrackArtist" class="text-[11px] sm:text-xs text-nm-subtext truncate mt-0.5">NMplayer Studio</p>
+        </div>
+        <button id="playerLikeToggleBtn" onclick="toggleLikeActiveTrack()" title="Like Song" class="text-nm-subtext hover:text-white transition-colors p-2 flex-shrink-0">
+          <i class="fa-regular fa-heart text-base"></i>
+        </button>
+      </div>
+
+      <!-- Center Playback Controls & Scrubber -->
+      <div class="flex flex-col items-center justify-center flex-1 max-w-xl">
+        <div class="flex items-center gap-3 sm:gap-5 mb-1.5">
+          <button id="shuffleToggleBtn" onclick="toggleShuffleMode()" title="Shuffle" class="text-nm-subtext hover:text-white transition-colors text-xs sm:text-sm relative">
+            <i class="fa-solid fa-shuffle"></i>
+            <span id="shuffleIndicatorDot" class="hidden w-1 h-1 rounded-full bg-nm-green absolute -bottom-1.5 left-1/2 -translate-x-1/2"></span>
+          </button>
+
+          <button onclick="playPreviousTrack()" title="Previous" class="text-nm-subtext hover:text-white transition-colors text-base sm:text-lg">
+            <i class="fa-solid fa-backward-step"></i>
+          </button>
+
+          <button onclick="togglePlayPauseState()" title="Play / Pause" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white hover:scale-105 active:scale-95 text-black flex items-center justify-center transition-transform shadow-md">
+            <i id="mainPlayPauseIcon" class="fa-solid fa-play text-sm sm:text-base ml-0.5"></i>
+          </button>
+
+          <button onclick="playNextTrack()" title="Next" class="text-nm-subtext hover:text-white transition-colors text-base sm:text-lg">
+            <i class="fa-solid fa-forward-step"></i>
+          </button>
+
+          <button id="repeatToggleBtn" onclick="toggleRepeatMode()" title="Repeat" class="text-nm-subtext hover:text-white transition-colors text-xs sm:text-sm relative">
+            <i class="fa-solid fa-repeat"></i>
+            <span id="repeatOnePill" class="hidden text-[8px] font-black bg-nm-green text-black rounded-full w-3 h-3 flex items-center justify-center absolute -top-1.5 -right-2">1</span>
+            <span id="repeatIndicatorDot" class="hidden w-1 h-1 rounded-full bg-nm-green absolute -bottom-1.5 left-1/2 -translate-x-1/2"></span>
+          </button>
+        </div>
+
+        <div class="w-full flex items-center gap-2 sm:gap-3 slider-group">
+          <span id="playerElapsedText" class="text-[10px] sm:text-[11px] text-nm-subtext font-medium w-9 text-right tabular-nums">0:00</span>
+          <div class="relative flex-1 flex items-center">
+            <input
+              type="range"
+              id="playerSeekSlider"
+              min="0"
+              max="100"
+              value="0"
+              step="0.1"
+              oninput="onSeekScrub(this.value)"
+              onchange="onSeekCommit(this.value)"
+              class="nm-slider w-full z-10"
+            />
+            <div class="w-full h-1 bg-white/15 rounded-full overflow-hidden absolute pointer-events-none">
+              <div id="playerSeekFill" class="h-full bg-white rounded-full" style="width: 0%;"></div>
+            </div>
+          </div>
+          <span id="playerDurationText" class="text-[10px] sm:text-[11px] text-nm-subtext font-medium w-9 tabular-nums">0:00</span>
+        </div>
+      </div>
+
+      <!-- Right: Live Equalizer + Volume -->
+      <div class="hidden sm:flex items-center justify-end gap-3 w-[30%]">
+        <div id="liveEqualizer" class="eq-paused flex items-end gap-[2px] h-4 w-5 mr-1" title="Equalizer">
+          <span class="eq-bar w-1 bg-nm-green rounded-t-sm"></span>
+          <span class="eq-bar w-1 bg-nm-green rounded-t-sm"></span>
+          <span class="eq-bar w-1 bg-nm-green rounded-t-sm"></span>
+          <span class="eq-bar w-1 bg-nm-green rounded-t-sm"></span>
+        </div>
+
+        <button onclick="toggleVolumeMute()" title="Mute / Unmute" class="text-nm-subtext hover:text-white transition-colors w-7 text-center">
+          <i id="playerVolumeIcon" class="fa-solid fa-volume-high text-sm"></i>
+        </button>
+
+        <div class="w-24 md:w-28 flex items-center relative slider-group">
+          <input
+            type="range"
+            id="playerVolumeSlider"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.8"
+            oninput="onVolumeChange(this.value)"
+            class="nm-slider w-full z-10"
+          />
+          <div class="w-full h-1 bg-white/15 rounded-full overflow-hidden absolute pointer-events-none">
+            <div id="playerVolumeFill" class="h-full bg-nm-green rounded-full" style="width: 80%;"></div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ========================================================================
+       MODALS: CREATE PLAYLIST, ADD TO PLAYLIST, ADD URL TRACK
+       ======================================================================== -->
+  <!-- Create Playlist Modal -->
+  <div id="createPlaylistModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-nm-elevated border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white">Create Playlist</h3>
+        <button onclick="closeModalById('createPlaylistModal')" class="text-nm-subtext hover:text-white w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form onsubmit="submitNewPlaylist(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1.5">Playlist Name</label>
+          <input type="text" id="playlistNameInput" required maxlength="45" placeholder="e.g., Focus Beats" class="w-full bg-nm-base border border-white/15 focus:border-nm-green rounded-xl px-4 py-2.5 text-sm text-white outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1.5">Description</label>
+          <input type="text" id="playlistDescInput" maxlength="90" placeholder="Optional description..." class="w-full bg-nm-base border border-white/15 focus:border-nm-green rounded-xl px-4 py-2.5 text-sm text-white outline-none" />
+        </div>
+        <div class="flex justify-end gap-2.5 pt-2">
+          <button type="button" onclick="closeModalById('createPlaylistModal')" class="px-4 py-2 rounded-full text-xs font-bold text-nm-subtext hover:text-white">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-full bg-nm-green hover:bg-nm-greenHover text-black text-xs font-bold">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Track to Playlist Modal -->
+  <div id="addToPlaylistModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-nm-elevated border border-white/10 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-1">
+        <h3 class="text-lg font-bold text-white">Add to Playlist</h3>
+        <button onclick="closeModalById('addToPlaylistModal')" class="text-nm-subtext hover:text-white w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <p id="playlistModalSubtitle" class="text-xs text-nm-subtext truncate mb-4"></p>
+      <div id="playlistModalOptions" class="space-y-1.5 max-h-60 overflow-y-auto pr-1"></div>
+      <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+        <button onclick="closeModalById('addToPlaylistModal'); openCreatePlaylistModal();" class="text-xs font-bold text-nm-green hover:underline flex items-center gap-1">
+          <i class="fa-solid fa-plus"></i> New Playlist
+        </button>
+        <button onclick="closeModalById('addToPlaylistModal')" class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Audio URL Modal (Customer & Admin) -->
+  <div id="addUrlModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-nm-elevated border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="urlModalTitle" class="text-lg font-bold text-white">Add Audio via URL</h3>
+        <button onclick="closeModalById('addUrlModal')" class="text-nm-subtext hover:text-white w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form onsubmit="submitUrlTrack(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1">Audio Stream URL (.mp3 / .wav / .ogg)</label>
+          <input type="url" id="urlInputSrc" required placeholder="https://example.com/track.mp3" class="w-full bg-nm-base border border-white/15 focus:border-nm-green rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1">Title</label>
+            <input type="text" id="urlInputTitle" required placeholder="Midnight Drive" class="w-full bg-nm-base border border-white/15 focus:border-nm-green rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1">Artist</label>
+            <input type="text" id="urlInputArtist" required placeholder="Synthwave Co." class="w-full bg-nm-base border border-white/15 focus:border-nm-green rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-nm-subtext mb-1">Album</label>
+          <input type="text" id="urlInputAlbum" placeholder="Single" class="w-full bg-nm-base border border-white/15 focus:border-nm-green rounded-xl px-3.5 py-2.5 text-sm text-white outline-none" />
+        </div>
+        <div class="flex justify-end gap-2.5 pt-2">
+          <button type="button" onclick="closeModalById('addUrlModal')" class="px-4 py-2 rounded-full text-xs font-bold text-nm-subtext hover:text-white">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-full bg-nm-green hover:bg-nm-greenHover text-black text-xs font-bold">Add Track</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastBanner" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-nm-green text-black px-5 py-2.5 rounded-full text-xs font-extrabold shadow-2xl opacity-0 pointer-events-none transition-all duration-300 translate-y-2 flex items-center gap-2">
+    <i class="fa-solid fa-circle-check"></i>
+    <span id="toastText">Saved</span>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * NMplayer — Standalone Music App, Auth & Admin Control Panel
+     * ============================================================================
+     */
+
+    const STORAGE_KEYS = {
+      USERS: 'nmplayer_v2_users',
+      SESSION: 'nmplayer_v2_session',
+      TRACKS: 'nmplayer_v2_tracks',
+      PLAYLISTS: 'nmplayer_v2_playlists',
+      LIKES: 'nmplayer_v2_likes',
+      VOLUME: 'nmplayer_v2_volume'
+    };
+
+    const SEED_USERS = [
+      {
+        id: 'usr-admin-1',
+        name: 'NM Admin',
+        email: 'admin@nmplayer.com',
+        password: 'password', // Demo seed; demo login button also fills admin@nmplayer.com / admin123 check
+        demoPasswords: ['password', 'admin123'],
+        role: 'admin'
+      },
+      {
+        id: 'usr-cust-1',
+        name: 'Jordan Listener',
+        email: 'user@nmplayer.com',
+        password: 'password',
+        demoPasswords: ['password', 'user123'],
+        role: 'customer'
+      }
+    ];
+
+    const SEED_TRACKS = [
+      {
+        id: 'trk-1',
+        title: 'Emerald Horizon',
+        artist: 'NM Studio',
+        album: 'Green Line Sessions',
+        duration: 150,
+        type: 'synth',
+        gradient: 'from-emerald-500 to-teal-950',
+        icon: 'fa-wave-square',
+        synth: { baseFreq: 110, tempo: 94, scale: [0, 3, 7, 10, 12, 15], wave: 'triangle' }
+      },
+      {
+        id: 'trk-2',
+        title: 'Midnight Focus',
+        artist: 'Koda Beats',
+        album: 'Deep Work Vol. 1',
+        duration: 180,
+        type: 'synth',
+        gradient: 'from-indigo-500 to-slate-950',
+        icon: 'fa-moon',
+        synth: { baseFreq: 130.81, tempo: 102, scale: [0, 2, 4, 7, 9, 12], wave: 'sine' }
+      },
+      {
+        id: 'trk-3',
+        title: 'Neon Sprint',
+        artist: 'Hyperion',
+        album: 'Pulse & Drive',
+        duration: 156,
+        type: 'synth',
+        gradient: 'from-orange-500 to-rose-950',
+        icon: 'fa-bolt',
+        synth: { baseFreq: 98.0, tempo: 126, scale: [0, 3, 5, 7, 10, 12], wave: 'sawtooth' }
+      },
+      {
+        id: 'trk-4',
+        title: 'Rain on Glass',
+        artist: 'Aether Drift',
+        album: 'Ambient Sketches',
+        duration: 192,
+        type: 'synth',
+        gradient: 'from-cyan-500 to-blue-950',
+        icon: 'fa-cloud-rain',
+        synth: { baseFreq: 146.83, tempo: 78, scale: [0, 4, 7, 11, 14], wave: 'sine' }
+      },
+      {
+        id: 'trk-5',
+        title: 'Solaris Drift',
+        artist: 'Luna V',
+        album: 'Orbitals',
+        duration: 168,
+        type: 'synth',
+        gradient: 'from-amber-400 to-orange-950',
+        icon: 'fa-sun',
+        synth: { baseFreq: 164.81, tempo: 96, scale: [0, 2, 5, 7, 9, 12], wave: 'triangle' }
+      },
+      {
+        id: 'trk-6',
+        title: 'Synthwave Runner',
+        artist: 'Vortex 84',
+        album: 'Night City',
+        duration: 164,
+        type: 'synth',
+        gradient: 'from-fuchsia-600 to-purple-950',
+        icon: 'fa-microchip',
+        synth: { baseFreq: 82.41, tempo: 122, scale: [0, 3, 7, 8, 10, 12], wave: 'sawtooth' }
+      }
+    ];
+
+    const SEED_PLAYLISTS = [
+      {
+        id: 'pl-1',
+        name: 'Chill & Focus',
+        description: 'Calm electronic grooves for study and relaxation.',
+        gradient: 'from-teal-500 to-emerald-950',
+        trackIds: ['trk-1', 'trk-2', 'trk-4']
+      },
+      {
+        id: 'pl-2',
+        name: 'High Energy',
+        description: 'Upbeat tempos to keep momentum going.',
+        gradient: 'from-rose-500 to-amber-950',
+        trackIds: ['trk-3', 'trk-5', 'trk-6']
+      }
+    ];
+
+    const CARD_GRADIENTS = [
+      'from-emerald-500 to-teal-950',
+      'from-indigo-500 to-purple-950',
+      'from-rose-500 to-orange-950',
+      'from-cyan-500 to-blue-950',
+      'from-amber-400 to-red-950',
+      'from-fuchsia-500 to-slate-950'
+    ];
+
+    // Runtime State
+    let app = {
+      users: [],
+      currentUser: null,
+      portalMode: 'customer', // 'customer' | 'admin'
+      customerView: 'home', // 'home' | 'library' | 'liked' | playlistId
+      searchQuery: '',
+      tracks: [],
+      playlists: [],
+      likedIds: [],
+      currentTrackId: null,
+      isPlaying: false,
+      isShuffle: false,
+      repeatMode: 'off', // 'off' | 'all' | 'one'
+      volume: 0.8,
+      isMuted: false,
+      currentTime: 0,
+      isSeeking: false,
+      modalTrackId: null,
+      urlModalForAdmin: false,
+      pendingAdminFile: null
+    };
+
+    // Audio Engine
+    const audioEl = new Audio();
+    audioEl.crossOrigin = 'anonymous';
+    let audioCtx = null;
+    let masterGain = null;
+    let synthLoop = null;
+    let clockLoop = null;
+    let synthStep = 0;
+
+    // Boot
+    window.addEventListener('DOMContentLoaded', () => {
+      initStorage();
+      bindAudioEvents();
+      app.currentTrackId = app.tracks[0]?.id || null;
+      updateVolumeVisuals();
+
+      if (app.currentUser) {
+        enterAuthenticatedApp(app.currentUser.role === 'admin' ? 'admin' : 'customer');
+      } else {
+        showAuthScreen();
+      }
+    });
+
+    // ==========================================================================
+    // STORAGE & AUTHENTICATION
+    // ==========================================================================
+    function initStorage() {
+      try {
+        const storedUsers = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || 'null');
+        app.users = Array.isArray(storedUsers) && storedUsers.length ? storedUsers : [...SEED_USERS];
+
+        const storedTracks = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRACKS) || 'null');
+        if (Array.isArray(storedTracks) && storedTracks.length) {
+          const validCustom = storedTracks.filter(t => t.type !== 'synth' && t.type !== 'local-blob');
+          app.tracks = [...SEED_TRACKS, ...validCustom];
+        } else {
+          app.tracks = [...SEED_TRACKS];
+        }
+
+        const storedPlaylists = JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYLISTS) || 'null');
+        app.playlists = Array.isArray(storedPlaylists) && storedPlaylists.length ? storedPlaylists : [...SEED_PLAYLISTS];
+
+        const storedLikes = JSON.parse(localStorage.getItem(STORAGE_KEYS.LIKES) || 'null');
+        app.likedIds = Array.isArray(storedLikes) ? storedLikes : ['trk-1'];
+
+        const storedVol = localStorage.getItem(STORAGE_KEYS.VOLUME);
+        if (storedVol !== null) app.volume = parseFloat(storedVol);
+
+        const sessionId = localStorage.getItem(STORAGE_KEYS.SESSION);
+        if (sessionId) {
+          app.currentUser = app.users.find(u => u.id === sessionId) || null;
+        }
+      } catch (err) {
+        console.error('Storage init error:', err);
+        app.users = [...SEED_USERS];
+        app.tracks = [...SEED_TRACKS];
+        app.playlists = [...SEED_PLAYLISTS];
+        app.likedIds = ['trk-1'];
+      }
+    }
+
+    function persistState() {
+      try {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(app.users));
+        const saveableTracks = app.tracks.filter(t => t.type !== 'local-blob');
+        localStorage.setItem(STORAGE_KEYS.TRACKS, JSON.stringify(saveableTracks));
+        localStorage.setItem(STORAGE_KEYS.PLAYLISTS, JSON.stringify(app.playlists));
+        localStorage.setItem(STORAGE_KEYS.LIKES, JSON.stringify(app.likedIds));
+        localStorage.setItem(STORAGE_KEYS.VOLUME, String(app.volume));
+        if (app.currentUser) {
+          localStorage.setItem(STORAGE_KEYS.SESSION, app.currentUser.id);
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.SESSION);
+        }
+      } catch (err) {
+        console.warn('Persist warning:', err);
+      }
+    }
+
+    function switchAuthTab(tab) {
+      const signInForm = document.getElementById('signInForm');
+      const signUpForm = document.getElementById('signUpForm');
+      const tabIn = document.getElementById('tabSignIn');
+      const tabUp = document.getElementById('tabSignUp');
+      hideAuthMessage();
+
+      if (tab === 'signin') {
+        signInForm.classList.remove('hidden');
+        signUpForm.classList.add('hidden');
+        tabIn.className = 'py-2.5 rounded-lg text-xs sm:text-sm font-bold bg-nm-elevated text-white shadow transition-all';
+        tabUp.className = 'py-2.5 rounded-lg text-xs sm:text-sm font-bold text-nm-subtext hover:text-white transition-all';
+      } else {
+        signInForm.classList.add('hidden');
+        signUpForm.classList.remove('hidden');
+        tabUp.className = 'py-2.5 rounded-lg text-xs sm:text-sm font-bold bg-nm-elevated text-white shadow transition-all';
+        tabIn.className = 'py-2.5 rounded-lg text-xs sm:text-sm font-bold text-nm-subtext hover:text-white transition-all';
+      }
+    }
+
+    function showAuthMessage(msg, isError = true) {
+      const box = document.getElementById('authMessage');
+      box.textContent = msg;
+      box.className = `mb-4 px-3.5 py-2.5 rounded-xl text-xs font-semibold border ${
+        isError
+          ? 'bg-red-500/15 border-red-500/30 text-red-300'
+          : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+      }`;
+      box.classList.remove('hidden');
+    }
+
+    function hideAuthMessage() {
+      document.getElementById('authMessage').classList.add('hidden');
+    }
+
+    function authenticateCredentials(email, password) {
+      const normalized = email.trim().toLowerCase();
+      return app.users.find(u => {
+        if (u.email.toLowerCase() !== normalized) return false;
+        if (u.password === password) return true;
+        if (Array.isArray(u.demoPasswords) && u.demoPasswords.includes(password)) return true;
+        return false;
+      }) || null;
+    }
+
+    function handleSignIn(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const user = authenticateCredentials(email, password);
+
+      if (!user) {
+        showAuthMessage('Invalid email or password. Try one of the demo accounts below.');
+        return;
+      }
+
+      app.currentUser = user;
+      persistState();
+      enterAuthenticatedApp(user.role === 'admin' ? 'admin' : 'customer');
+      showToast(`Welcome back, ${user.name}!`);
+    }
+
+    function quickDemoLogin(role) {
+      const email = role === 'admin' ? 'admin@nmplayer.com' : 'user@nmplayer.com';
+      const pass = role === 'admin' ? 'admin123' : 'user123';
+      document.getElementById('loginEmail').value = email;
+      document.getElementById('loginPassword').value = pass;
+
+      const user = app.users.find(u => u.email.toLowerCase() === email);
+      if (user) {
+        app.currentUser = user;
+        persistState();
+        enterAuthenticatedApp(user.role === 'admin' ? 'admin' : 'customer');
+        showToast(`Signed in as ${user.name} (${user.role})`);
+      }
+    }
+
+    function handleSignUp(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const password = document.getElementById('regPassword').value;
+      const role = document.getElementById('regRole').value === 'admin' ? 'admin' : 'customer';
+
+      if (app.users.some(u => u.email.toLowerCase() === email)) {
+        showAuthMessage('An account with this email already exists.');
+        return;
+      }
+
+      const newUser = {
+        id: `usr-${Date.now()}`,
+        name,
+        email,
+        password,
+        role
+      };
+
+      app.users.push(newUser);
+      app.currentUser = newUser;
+      persistState();
+      document.getElementById('signUpForm').reset();
+      enterAuthenticatedApp(role === 'admin' ? 'admin' : 'customer');
+      showToast(`Account created for ${name}!`);
+    }
+
+    function handleLogout() {
+      app.isPlaying = false;
+      stopAudioEngine();
+      app.currentUser = null;
+      persistState();
+      updatePlayerVisuals();
+      showAuthScreen();
+      showToast('Signed out');
+    }
+
+    function showAuthScreen() {
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('appShell').classList.add('hidden');
+      document.getElementById('appShell').classList.remove('flex');
+    }
+
+    function enterAuthenticatedApp(initialMode) {
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appShell').classList.remove('hidden');
+      document.getElementById('appShell').classList.add('flex');
+
+      const isAdmin = app.currentUser?.role === 'admin';
+      document.getElementById('headerUserName').textContent = app.currentUser?.name || 'Listener';
+      document.getElementById('headerUserRole').textContent = app.currentUser?.role || 'customer';
+      document.getElementById('sidebarRoleBadge').textContent = isAdmin ? 'Admin Access' : 'Customer';
+      document.getElementById('adminSidebarSwitcher').classList.toggle('hidden', !isAdmin);
+
+      switchPortalMode(isAdmin && initialMode === 'admin' ? 'admin' : 'customer');
+    }
+
+    function switchPortalMode(mode) {
+      if (mode === 'admin' && app.currentUser?.role !== 'admin') {
+        showToast('Admin privileges required');
+        return;
+      }
+      app.portalMode = mode;
+      toggleMobileSidebar(false);
+
+      const isAdminView = mode === 'admin';
+      document.getElementById('customerDashboardView').classList.toggle('hidden', isAdminView);
+      document.getElementById('adminPanelView').classList.toggle('hidden', !isAdminView);
+
+      document.getElementById('searchBarWrapper').classList.toggle('hidden', isAdminView);
+      document.getElementById('customerHeaderActions').classList.toggle('hidden', isAdminView);
+      document.getElementById('adminHeaderTitle').classList.toggle('hidden', !isAdminView);
+      document.getElementById('adminHeaderTitle').classList.toggle('flex', isAdminView);
+      document.getElementById('previewCustomerBtn').classList.toggle('hidden', !isAdminView);
+      document.getElementById('previewCustomerBtn').classList.toggle('flex', isAdminView);
+
+      const adminNavBtn = document.getElementById('btnSwitchAdminPanel');
+      if (adminNavBtn) {
+        adminNavBtn.classList.toggle('ring-2', isAdminView);
+        adminNavBtn.classList.toggle('ring-amber-400', isAdminView);
+      }
+
+      document.getElementById('mainScrollArea').scrollTo({ top: 0, behavior: 'smooth' });
+      renderAllViews();
+    }
+
+    // ==========================================================================
+    // AUDIO ENGINE (SYNTH + HTML5 AUDIO)
+    // ==========================================================================
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new Ctx();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = app.isMuted ? 0 : app.volume * 0.35;
+        masterGain.connect(audioCtx.destination);
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function bindAudioEvents() {
+      audioEl.addEventListener('timeupdate', () => {
+        if (!app.isSeeking && getActiveTrack()?.type !== 'synth') {
+          app.currentTime = audioEl.currentTime;
+          updateSeekVisuals();
+        }
+      });
+
+      audioEl.addEventListener('loadedmetadata', () => {
+        const trk = getActiveTrack();
+        if (trk && audioEl.duration && !isNaN(audioEl.duration)) {
+          trk.duration = Math.floor(audioEl.duration);
+          updateSeekVisuals();
+          renderCustomerSongRows();
+        }
+      });
+
+      audioEl.addEventListener('ended', () => onTrackFinished());
+      audioEl.addEventListener('error', () => {
+        showToast('Audio source could not be played');
+        app.isPlaying = false;
+        stopAudioEngine();
+        updatePlayerVisuals();
+      });
+    }
+
+    function stopAudioEngine() {
+      audioEl.pause();
+      if (synthLoop) { clearInterval(synthLoop); synthLoop = null; }
+      if (clockLoop) { clearInterval(clockLoop); clockLoop = null; }
+    }
+
+    function runSynthTrack(track) {
+      ensureAudioContext();
+      stopAudioEngine();
+
+      const cfg = track.synth || { baseFreq: 110, tempo: 100, scale: [0, 3, 7, 10, 12], wave: 'triangle' };
+      const stepMs = (60 / cfg.tempo / 2) * 1000;
+
+      const tickNote = () => {
+        if (!app.isPlaying || !audioCtx) return;
+        const now = audioCtx.currentTime;
+        const noteSemitone = cfg.scale[synthStep % cfg.scale.length];
+        const oct = (synthStep % 8 === 4) ? 2 : 1;
+        const freq = cfg.baseFreq * Math.pow(2, noteSemitone / 12) * oct;
+
+        const osc = audioCtx.createOscillator();
+        const filter = audioCtx.createBiquadFilter();
+        const gain = audioCtx.createGain();
+
+        osc.type = cfg.wave;
+        osc.frequency.setValueAtTime(freq, now);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(900, now);
+        filter.frequency.exponentialRampToValueAtTime(260, now + 0.35);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.28, now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.42);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+
+        osc.start(now);
+        osc.stop(now + 0.45);
+
+        if (synthStep % 4 === 0) {
+          const bass = audioCtx.createOscillator();
+          const bGain = audioCtx.createGain();
+          bass.type = 'sine';
+          bass.frequency.setValueAtTime(cfg.baseFreq / 2, now);
+          bGain.gain.setValueAtTime(0.32, now);
+          bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+          bass.connect(bGain);
+          bGain.connect(masterGain);
+          bass.start(now);
+          bass.stop(now + 0.52);
+        }
+
+        synthStep++;
+      };
+
+      tickNote();
+      synthLoop = setInterval(tickNote, stepMs);
+
+      clockLoop = setInterval(() => {
+        if (app.isPlaying && !app.isSeeking) {
+          app.currentTime += 0.25;
+          if (app.currentTime >= track.duration) {
+            app.currentTime = track.duration;
+            updateSeekVisuals();
+            onTrackFinished();
+          } else {
+            updateSeekVisuals();
+          }
+        }
+      }, 250);
+    }
+
+    function playTrack(trackId, restart = true) {
+      const trk = app.tracks.find(t => t.id === trackId);
+      if (!trk) return;
+
+      const changed = app.currentTrackId !== trackId;
+      app.currentTrackId = trackId;
+      if (restart || changed) {
+        app.currentTime = 0;
+        synthStep = 0;
+      }
+
+      app.isPlaying = true;
+      stopAudioEngine();
+
+      if (trk.type === 'synth') {
+        runSynthTrack(trk);
+      } else {
+        if (audioEl.src !== trk.src) audioEl.src = trk.src;
+        audioEl.currentTime = app.currentTime;
+        audioEl.volume = app.isMuted ? 0 : app.volume;
+        audioEl.play().catch(() => {
+          app.isPlaying = false;
+          updatePlayerVisuals();
+        });
+      }
+
+      updatePlayerVisuals();
+      renderCustomerSongRows();
+    }
+
+    function togglePlayPauseState() {
+      const trk = getActiveTrack();
+      if (!trk) {
+        if (app.tracks.length) playTrack(app.tracks[0].id, true);
+        return;
+      }
+      if (app.isPlaying) {
+        app.isPlaying = false;
+        stopAudioEngine();
+        updatePlayerVisuals();
+        renderCustomerSongRows();
+      } else {
+        playTrack(trk.id, false);
+      }
+    }
+
+    function onTrackFinished() {
+      if (app.repeatMode === 'one') {
+        playTrack(app.currentTrackId, true);
+        return;
+      }
+      playNextTrack(true);
+    }
+
+    function playNextTrack(auto = false) {
+      const list = getFilteredCustomerTracks();
+      const pool = list.length ? list : app.tracks;
+      if (!pool.length) return;
+
+      if (app.isShuffle) {
+        const choices = pool.length > 1 ? pool.filter(t => t.id !== app.currentTrackId) : pool;
+        const pick = choices[Math.floor(Math.random() * choices.length)];
+        playTrack(pick.id, true);
+        return;
+      }
+
+      const idx = pool.findIndex(t => t.id === app.currentTrackId);
+      if (idx + 1 < pool.length) {
+        playTrack(pool[idx + 1].id, true);
+      } else if (app.repeatMode === 'all' || !auto) {
+        playTrack(pool[0].id, true);
+      } else {
+        app.isPlaying = false;
+        app.currentTime = 0;
+        stopAudioEngine();
+        updatePlayerVisuals();
+        renderCustomerSongRows();
+      }
+    }
+
+    function playPreviousTrack() {
+      if (app.currentTime > 4) {
+        playTrack(app.currentTrackId, true);
+        return;
+      }
+      const list = getFilteredCustomerTracks();
+      const pool = list.length ? list : app.tracks;
+      if (!pool.length) return;
+
+      const idx = pool.findIndex(t => t.id === app.currentTrackId);
+      const prevIdx = idx <= 0 ? pool.length - 1 : idx - 1;
+      playTrack(pool[prevIdx].id, true);
+    }
+
+    function toggleShuffleMode() {
+      app.isShuffle = !app.isShuffle;
+      document.getElementById('shuffleToggleBtn').classList.toggle('text-nm-green', app.isShuffle);
+      document.getElementById('shuffleToggleBtn').classList.toggle('text-nm-subtext', !app.isShuffle);
+      document.getElementById('shuffleIndicatorDot').classList.toggle('hidden', !app.isShuffle);
+      showToast(app.isShuffle ? 'Shuffle enabled' : 'Shuffle disabled');
+    }
+
+    function toggleRepeatMode() {
+      const order = ['off', 'all', 'one'];
+      app.repeatMode = order[(order.indexOf(app.repeatMode) + 1) % order.length];
+      const active = app.repeatMode !== 'off';
+      document.getElementById('repeatToggleBtn').classList.toggle('text-nm-green', active);
+      document.getElementById('repeatToggleBtn').classList.toggle('text-nm-subtext', !active);
+      document.getElementById('repeatIndicatorDot').classList.toggle('hidden', !active);
+      document.getElementById('repeatOnePill').classList.toggle('hidden', app.repeatMode !== 'one');
+      const labels = { off: 'Repeat off', all: 'Repeat all', one: 'Repeat one' };
+      showToast(labels[app.repeatMode]);
+    }
+
+    function onSeekScrub(pct) {
+      app.isSeeking = true;
+      const trk = getActiveTrack();
+      if (!trk) return;
+      document.getElementById('playerElapsedText').textContent = fmtTime((pct / 100) * (trk.duration || 0));
+      document.getElementById('playerSeekFill').style.width = `${pct}%`;
+    }
+
+    function onSeekCommit(pct) {
+      const trk = getActiveTrack();
+      app.isSeeking = false;
+      if (!trk) return;
+      const targetSec = (pct / 100) * (trk.duration || 0);
+      app.currentTime = targetSec;
+      if (trk.type !== 'synth' && !isNaN(audioEl.duration)) {
+        audioEl.currentTime = targetSec;
+      }
+      updateSeekVisuals();
+    }
+
+    function onVolumeChange(val) {
+      app.volume = parseFloat(val);
+      if (app.volume > 0 && app.isMuted) app.isMuted = false;
+      syncVolume();
+      updateVolumeVisuals();
+      persistState();
+    }
+
+    function toggleVolumeMute() {
+      app.isMuted = !app.isMuted;
+      syncVolume();
+      updateVolumeVisuals();
+    }
+
+    function syncVolume() {
+      const eff = app.isMuted ? 0 : app.volume;
+      audioEl.volume = eff;
+      if (masterGain && audioCtx) {
+        masterGain.gain.setTargetAtTime(eff * 0.35, audioCtx.currentTime, 0.02);
+      }
+    }
+
+    // ==========================================================================
+    // CUSTOMER DASHBOARD ACTIONS & RENDERING
+    // ==========================================================================
+    function getActiveTrack() {
+      return app.tracks.find(t => t.id === app.currentTrackId) || null;
+    }
+
+    function navigateCustomerView(viewId) {
+      app.customerView = viewId;
+      toggleMobileSidebar(false);
+      document.getElementById('mainScrollArea').scrollTo({ top: 0, behavior: 'smooth' });
+      renderAllViews();
+    }
+
+    function focusSearchInput() {
+      toggleMobileSidebar(false);
+      const input = document.getElementById('searchInput');
+      input.focus();
+      input.select();
+    }
+
+    function handleSearchInput(val) {
+      app.searchQuery = val.trim().toLowerCase();
+      document.getElementById('clearSearchBtn').classList.toggle('hidden', !app.searchQuery.length);
+      renderCustomerHero();
+      renderCustomerSongRows();
+    }
+
+    function clearSearchInput() {
+      document.getElementById('searchInput').value = '';
+      handleSearchInput('');
+    }
+
+    function getBaseCustomerTracks() {
+      if (app.customerView === 'liked') {
+        return app.likedIds.map(id => app.tracks.find(t => t.id === id)).filter(Boolean);
+      }
+      if (app.customerView.startsWith('pl-')) {
+        const pl = app.playlists.find(p => p.id === app.customerView);
+        if (!pl) return [];
+        return pl.trackIds.map(id => app.tracks.find(t => t.id === id)).filter(Boolean);
+      }
+      return app.tracks;
+    }
+
+    function getFilteredCustomerTracks() {
+      const base = getBaseCustomerTracks();
+      if (!app.searchQuery) return base;
+      return base.filter(t =>
+        t.title.toLowerCase().includes(app.searchQuery) ||
+        t.artist.toLowerCase().includes(app.searchQuery) ||
+        t.album.toLowerCase().includes(app.searchQuery)
+      );
+    }
+
+    function playCurrentCustomerList(shuffle) {
+      const list = getFilteredCustomerTracks();
+      if (!list.length) {
+        showToast('No tracks in this view');
+        return;
+      }
+      if (shuffle) {
+        app.isShuffle = true;
+        document.getElementById('shuffleToggleBtn').classList.add('text-nm-green');
+        document.getElementById('shuffleToggleBtn').classList.remove('text-nm-subtext');
+        document.getElementById('shuffleIndicatorDot').classList.remove('hidden');
+        const rnd = list[Math.floor(Math.random() * list.length)];
+        playTrack(rnd.id, true);
+      } else {
+        playTrack(list[0].id, true);
+      }
+    }
+
+    function toggleLikeTrack(trackId, evt) {
+      if (evt) evt.stopPropagation();
+      const idx = app.likedIds.indexOf(trackId);
+      if (idx === -1) {
+        app.likedIds.push(trackId);
+        showToast('Added to Liked Songs');
+      } else {
+        app.likedIds.splice(idx, 1);
+        showToast('Removed from Liked Songs');
+      }
+      persistState();
+      renderAllViews();
+    }
+
+    function toggleLikeActiveTrack() {
+      if (app.currentTrackId) toggleLikeTrack(app.currentTrackId);
+    }
+
+    function openCreatePlaylistModal() {
+      document.getElementById('playlistNameInput').value = '';
+      document.getElementById('playlistDescInput').value = '';
+      openModalById('createPlaylistModal');
+      setTimeout(() => document.getElementById('playlistNameInput').focus(), 50);
+    }
+
+    function submitNewPlaylist(e) {
+      e.preventDefault();
+      const name = document.getElementById('playlistNameInput').value.trim();
+      const desc = document.getElementById('playlistDescInput').value.trim() || 'Custom playlist';
+      if (!name) return;
+
+      const pl = {
+        id: `pl-${Date.now()}`,
+        name,
+        description: desc,
+        gradient: CARD_GRADIENTS[app.playlists.length % CARD_GRADIENTS.length],
+        trackIds: []
+      };
+
+      app.playlists.push(pl);
+      persistState();
+      closeModalById('createPlaylistModal');
+      switchPortalMode('customer');
+      navigateCustomerView(pl.id);
+      showToast(`Created "${name}"`);
+    }
+
+    function deleteActivePlaylist() {
+      const pl = app.playlists.find(p => p.id === app.customerView);
+      if (!pl) return;
+      app.playlists = app.playlists.filter(p => p.id !== pl.id);
+      persistState();
+      navigateCustomerView('home');
+      showToast(`Deleted playlist "${pl.name}"`);
+    }
+
+    function openAddToPlaylistModal(trackId, evt) {
+      if (evt) evt.stopPropagation();
+      app.modalTrackId = trackId;
+      const trk = app.tracks.find(t => t.id === trackId);
+      document.getElementById('playlistModalSubtitle').textContent = trk ? `${trk.title} • ${trk.artist}` : '';
+
+      const box = document.getElementById('playlistModalOptions');
+      if (!app.playlists.length) {
+        box.innerHTML = `<p class="text-xs text-nm-subtext text-center py-3">No playlists created yet.</p>`;
+      } else {
+        box.innerHTML = app.playlists.map(pl => {
+          const hasSong = pl.trackIds.includes(trackId);
+          return `
+            <button type="button" onclick="toggleSongInPlaylist('${pl.id}')" class="w-full flex items-center justify-between p-2.5 rounded-xl bg-nm-base hover:bg-nm-highlight transition-colors text-left">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br ${pl.gradient} flex items-center justify-center flex-shrink-0">
+                  <i class="fa-solid fa-music text-xs text-white"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-white truncate">${esc(pl.name)}</p>
+                  <p class="text-[11px] text-nm-subtext">${pl.trackIds.length} songs</p>
+                </div>
+              </div>
+              <span class="w-6 h-6 rounded-full flex items-center justify-center ${hasSong ? 'bg-nm-green text-black' : 'border border-white/25 text-transparent'}">
+                <i class="fa-solid fa-check text-xs"></i>
+              </span>
+            </button>
+          `;
+        }).join('');
+      }
+
+      openModalById('addToPlaylistModal');
+    }
+
+    function toggleSongInPlaylist(playlistId) {
+      const pl = app.playlists.find(p => p.id === playlistId);
+      const trkId = app.modalTrackId;
+      if (!pl || !trkId) return;
+
+      const idx = pl.trackIds.indexOf(trkId);
+      if (idx === -1) {
+        pl.trackIds.push(trkId);
+        showToast(`Added to ${pl.name}`);
+      } else {
+        pl.trackIds.splice(idx, 1);
+        showToast(`Removed from ${pl.name}`);
+      }
+      persistState();
+      openAddToPlaylistModal(trkId);
+      renderAllViews();
+    }
+
+    function removeTrackFromView(trackId, evt) {
+      if (evt) evt.stopPropagation();
+      if (app.customerView === 'liked') {
+        app.likedIds = app.likedIds.filter(id => id !== trackId);
+        showToast('Removed from Liked Songs');
+      } else if (app.customerView.startsWith('pl-')) {
+        const pl = app.playlists.find(p => p.id === app.customerView);
+        if (pl) {
+          pl.trackIds = pl.trackIds.filter(id => id !== trackId);
+          showToast(`Removed from ${pl.name}`);
+        }
+      } else {
+        deleteTrackFromCatalog(trackId);
+        return;
+      }
+      persistState();
+      renderAllViews();
+    }
+
+    // Local Upload & URL Track Addition
+    function triggerCustomerFileUpload() {
+      document.getElementById('customerAudioInput').click();
+    }
+
+    document.getElementById('customerAudioInput').addEventListener('change', (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+
+      files.forEach((file, i) => {
+        const url = URL.createObjectURL(file);
+        const base = file.name.replace(/\.[^/.]+$/, '');
+        const split = base.split(' - ');
+        const artist = split.length > 1 ? split[0].trim() : (app.currentUser?.name || 'Local Upload');
+        const title = split.length > 1 ? split.slice(1).join(' - ').trim() : base;
+
+        const trk = {
+          id: `loc-${Date.now()}-${i}`,
+          title,
+          artist,
+          album: 'Local Audio',
+          duration: 180,
+          type: 'local-blob',
+          src: url,
+          gradient: CARD_GRADIENTS[(app.tracks.length + i) % CARD_GRADIENTS.length],
+          icon: 'fa-file-audio'
+        };
+
+        const probe = new Audio(url);
+        probe.addEventListener('loadedmetadata', () => {
+          if (probe.duration && !isNaN(probe.duration)) {
+            trk.duration = Math.floor(probe.duration);
+            renderAllViews();
+          }
+        });
+
+        app.tracks.unshift(trk);
+      });
+
+      e.target.value = '';
+      renderAllViews();
+      showToast(`Uploaded ${files.length} audio file${files.length > 1 ? 's' : ''}`);
+      playTrack(app.tracks[0].id, true);
+    });
+
+    function openAddUrlModal(forAdmin) {
+      app.urlModalForAdmin = forAdmin;
+      document.getElementById('urlModalTitle').textContent = forAdmin ? 'Publish Track via URL' : 'Add Track via Audio URL';
+      document.getElementById('urlInputSrc').value = '';
+      document.getElementById('urlInputTitle').value = '';
+      document.getElementById('urlInputArtist').value = '';
+      document.getElementById('urlInputAlbum').value = '';
+      openModalById('addUrlModal');
+    }
+
+    function submitUrlTrack(e) {
+      e.preventDefault();
+      const src = document.getElementById('urlInputSrc').value.trim();
+      const title = document.getElementById('urlInputTitle').value.trim();
+      const artist = document.getElementById('urlInputArtist').value.trim();
+      const album = document.getElementById('urlInputAlbum').value.trim() || (app.urlModalForAdmin ? 'Admin Catalog' : 'Stream');
+
+      const trk = {
+        id: `url-${Date.now()}`,
+        title,
+        artist,
+        album,
+        duration: 180,
+        type: 'url',
+        src,
+        gradient: CARD_GRADIENTS[app.tracks.length % CARD_GRADIENTS.length],
+        icon: 'fa-globe'
+      };
+
+      app.tracks.unshift(trk);
+      persistState();
+      closeModalById('addUrlModal');
+      renderAllViews();
+      showToast(`Added "${title}"`);
+      if (!app.urlModalForAdmin) {
+        playTrack(trk.id, true);
+      }
+    }
+
+    // ==========================================================================
+    // ADMIN PANEL ACTIONS & RENDERING
+    // ==========================================================================
+    function triggerAdminFileUpload() {
+      document.getElementById('adminAudioInput').click();
+    }
+
+    document.getElementById('adminAudioInput').addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      app.pendingAdminFile = file;
+      document.getElementById('adminSelectedFileName').textContent = file.name;
+      if (!document.getElementById('adminTrackTitle').value) {
+        document.getElementById('adminTrackTitle').value = file.name.replace(/\.[^/.]+$/, '');
+      }
+      if (!document.getElementById('adminTrackArtist').value) {
+        document.getElementById('adminTrackArtist').value = app.currentUser?.name || 'NMplayer Official';
+      }
+    });
+
+    function handleAdminPublishFileTrack(e) {
+      e.preventDefault();
+      if (!app.pendingAdminFile) {
+        showToast('Please choose an audio file first');
+        return;
+      }
+
+      const file = app.pendingAdminFile;
+      const url = URL.createObjectURL(file);
+      const title = document.getElementById('adminTrackTitle').value.trim();
+      const artist = document.getElementById('adminTrackArtist').value.trim();
+      const album = document.getElementById('adminTrackAlbum').value.trim() || 'Admin Release';
+
+      const trk = {
+        id: `adm-${Date.now()}`,
+        title,
+        artist,
+        album,
+        duration: 180,
+        type: 'local-blob',
+        src: url,
+        gradient: CARD_GRADIENTS[app.tracks.length % CARD_GRADIENTS.length],
+        icon: 'fa-compact-disc'
+      };
+
+      const probe = new Audio(url);
+      probe.addEventListener('loadedmetadata', () => {
+        if (probe.duration && !isNaN(probe.duration)) {
+          trk.duration = Math.floor(probe.duration);
+          renderAllViews();
+        }
+      });
+
+      app.tracks.unshift(trk);
+      app.pendingAdminFile = null;
+      document.getElementById('adminPublishForm').reset();
+      document.getElementById('adminSelectedFileName').textContent = 'Choose Audio File (.mp3/.wav/.ogg)';
+      renderAllViews();
+      showToast(`Published "${title}" to catalog`);
+    }
+
+    function deleteTrackFromCatalog(trackId) {
+      if (app.currentTrackId === trackId) {
+        app.isPlaying = false;
+        stopAudioEngine();
+      }
+      app.tracks = app.tracks.filter(t => t.id !== trackId);
+      app.likedIds = app.likedIds.filter(id => id !== trackId);
+      app.playlists.forEach(pl => {
+        pl.trackIds = pl.trackIds.filter(id => id !== trackId);
+      });
+      persistState();
+      renderAllViews();
+      showToast('Track deleted from catalog');
+    }
+
+    function toggleUserRole(userId) {
+      if (userId === app.currentUser?.id) {
+        showToast('Cannot change your own active role');
+        return;
+      }
+      const u = app.users.find(item => item.id === userId);
+      if (!u) return;
+      u.role = u.role === 'admin' ? 'customer' : 'admin';
+      persistState();
+      renderAdminPanel();
+      showToast(`${u.name} is now ${u.role}`);
+    }
+
+    function removeRegisteredUser(userId) {
+      if (userId === app.currentUser?.id) {
+        showToast('Cannot remove currently logged-in user');
+        return;
+      }
+      const target = app.users.find(u => u.id === userId);
+      app.users = app.users.filter(u => u.id !== userId);
+      persistState();
+      renderAdminPanel();
+      showToast(`Removed ${target?.name || 'user'}`);
+    }
+
+    function renderAdminPanel() {
+      if (app.currentUser?.role !== 'admin') return;
+
+      document.getElementById('statTotalTracks').textContent = app.tracks.length;
+      document.getElementById('statTotalUsers').textContent = app.users.length;
+      document.getElementById('statTotalPlaylists').textContent = app.playlists.length;
+
+      // Catalog Table
+      document.getElementById('adminCatalogTableBody').innerHTML = app.tracks.map(t => `
+        <tr class="hover:bg-white/[0.04]">
+          <td class="py-2.5 px-3 font-semibold text-white">${esc(t.title)}</td>
+          <td class="py-2.5 px-3 text-nm-subtext">${esc(t.artist)}</td>
+          <td class="py-2.5 px-3 text-nm-subtext hidden sm:table-cell">${esc(t.album)}</td>
+          <td class="py-2.5 px-3">
+            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+              t.type === 'synth' ? 'bg-emerald-500/15 text-nm-green' : 'bg-amber-500/15 text-amber-300'
+            }">${t.type === 'synth' ? 'Built-in Synth' : 'Audio / URL'}</span>
+          </td>
+          <td class="py-2.5 px-3 text-right">
+            <button type="button" onclick="switchPortalMode('customer'); playTrack('${t.id}', true);" title="Preview Track" class="p-1.5 rounded-lg hover:bg-white/10 text-nm-green mr-1">
+              <i class="fa-solid fa-play text-xs"></i>
+            </button>
+            <button type="button" onclick="deleteTrackFromCatalog('${t.id}')" title="Delete Track" class="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400">
+              <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      // Users Table
+      document.getElementById('adminUsersTableBody').innerHTML = app.users.map(u => {
+        const isSelf = u.id === app.currentUser.id;
+        return `
+          <tr class="hover:bg-white/[0.04]">
+            <td class="py-2.5 px-3 font-semibold text-white">${esc(u.name)} ${isSelf ? '<span class="text-[10px] text-nm-green ml-1">(You)</span>' : ''}</td>
+            <td class="py-2.5 px-3 text-nm-subtext hidden md:table-cell">${esc(u.email)}</td>
+            <td class="py-2.5 px-3">
+              <span class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                u.role === 'admin' ? 'bg-amber-500/20 text-amber-300' : 'bg-white/10 text-nm-subtext'
+              }">${u.role}</span>
+            </td>
+            <td class="py-2.5 px-3 text-right space-x-1.5">
+              ${isSelf ? '<span class="text-xs text-nm-muted">Active</span>' : `
+                <button type="button" onclick="toggleUserRole('${u.id}')" class="px-2.5 py-1 rounded-lg bg-nm-elevated hover:bg-nm-highlight text-xs font-semibold text-white">
+                  ${u.role === 'admin' ? 'Demote' : 'Make Admin'}
+                </button>
+                <button type="button" onclick="removeRegisteredUser('${u.id}')" class="px-2.5 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-xs font-semibold text-red-300">
+                  Remove
+                </button>
+              `}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ==========================================================================
+    // RENDERING HELPERS
+    // ==========================================================================
+    function renderAllViews() {
+      renderSidebar();
+      renderCustomerHero();
+      renderCustomerPlaylistCards();
+      renderCustomerSongRows();
+      renderAdminPanel();
+      updatePlayerVisuals();
+    }
+
+    function renderSidebar() {
+      const inCustomer = app.portalMode === 'customer';
+      ['home', 'library'].forEach(key => {
+        const el = document.getElementById(`cnav-${key}`);
+        const active = inCustomer && app.customerView === key;
+        el.classList.toggle('bg-nm-elevated', active);
+        el.classList.toggle('text-white', active);
+        el.classList.toggle('text-nm-subtext', !active);
+      });
+
+      const likedNav = document.getElementById('cnav-liked');
+      likedNav.classList.toggle('bg-nm-elevated', inCustomer && app.customerView === 'liked');
+      document.getElementById('sidebarLikedCount').textContent = app.likedIds.length;
+
+      document.getElementById('sidebarPlaylistList').innerHTML = app.playlists.map(pl => {
+        const active = inCustomer && app.customerView === pl.id;
+        return `
+          <button type="button" onclick="switchPortalMode('customer'); navigateCustomerView('${pl.id}');" class="w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left group ${active ? 'bg-nm-elevated' : 'hover:bg-nm-surface'}">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br ${pl.gradient} flex items-center justify-center flex-shrink-0 shadow">
+              <i class="fa-solid fa-music text-white/90 text-xs"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold truncate ${active ? 'text-nm-green' : 'text-white group-hover:text-nm-green'} transition-colors">${esc(pl.name)}</p>
+              <p class="text-xs text-nm-subtext truncate">Playlist • ${pl.trackIds.length} songs</p>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderCustomerHero() {
+      const tracks = getFilteredCustomerTracks();
+      const totalSec = tracks.reduce((sum, t) => sum + (t.duration || 0), 0);
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+
+      const art = document.getElementById('heroArtwork');
+      const tag = document.getElementById('heroTag');
+      const heading = document.getElementById('heroHeading');
+      const sub = document.getElementById('heroSub');
+      const delBtn = document.getElementById('deletePlaylistActionBtn');
+
+      delBtn.classList.add('hidden');
+      delBtn.classList.remove('flex');
+
+      if (app.customerView === 'liked') {
+        art.className = 'w-36 h-36 sm:w-44 sm:h-44 rounded-2xl shadow-2xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-emerald-400';
+        art.innerHTML = '<i class="fa-solid fa-heart text-5xl text-white"></i>';
+        tag.textContent = 'Favorites';
+        heading.textContent = 'Liked Songs';
+        sub.textContent = 'Tracks you have hearted in NMplayer.';
+      } else if (app.customerView.startsWith('pl-')) {
+        const pl = app.playlists.find(p => p.id === app.customerView);
+        if (pl) {
+          art.className = `w-36 h-36 sm:w-44 sm:h-44 rounded-2xl shadow-2xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${pl.gradient}`;
+          art.innerHTML = '<i class="fa-solid fa-compact-disc text-5xl text-white/90"></i>';
+          tag.textContent = 'Playlist';
+          heading.textContent = pl.name;
+          sub.textContent = pl.description;
+          delBtn.classList.remove('hidden');
+          delBtn.classList.add('flex');
+        }
+      } else if (app.customerView === 'library') {
+        art.className = 'w-36 h-36 sm:w-44 sm:h-44 rounded-2xl shadow-2xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-emerald-500 to-cyan-950';
+        art.innerHTML = '<i class="fa-solid fa-layer-group text-5xl text-white"></i>';
+        tag.textContent = 'Library';
+        heading.textContent = 'Your Library';
+        sub.textContent = 'Explore your playlists and full music collection.';
+      } else {
+        art.className = 'w-36 h-36 sm:w-44 sm:h-44 rounded-2xl shadow-2xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-nm-green to-emerald-950';
+        art.innerHTML = '<i class="fa-solid fa-wave-square text-5xl text-black/85"></i>';
+        tag.textContent = 'Featured Mix';
+        heading.textContent = 'All Songs';
+        sub.textContent = 'Built-in Web Audio synth tracks, admin-published catalog, and your uploaded files.';
+      }
+
+      document.getElementById('heroTrackCount').textContent = `${tracks.length} song${tracks.length === 1 ? '' : 's'}`;
+      document.getElementById('heroTotalDuration').textContent = `${mins} min ${secs} sec`;
+    }
+
+    function renderCustomerPlaylistCards() {
+      const sec = document.getElementById('playlistsGridSection');
+      const show = (app.customerView === 'home' || app.customerView === 'library') && !app.searchQuery;
+      sec.classList.toggle('hidden', !show);
+      if (!show) return;
+
+      document.getElementById('customerPlaylistCards').innerHTML = app.playlists.map(pl => `
+        <div onclick="navigateCustomerView('${pl.id}')" class="bg-nm-surface hover:bg-nm-elevated p-3.5 rounded-xl transition-all cursor-pointer group border border-white/[0.04] hover:border-white/10">
+          <div class="aspect-square w-full rounded-lg bg-gradient-to-br ${pl.gradient} mb-3 flex items-center justify-center relative shadow-lg overflow-hidden">
+            <i class="fa-solid fa-music text-3xl text-white/90 group-hover:scale-110 transition-transform"></i>
+            <button type="button" onclick="event.stopPropagation(); navigateCustomerView('${pl.id}'); playCurrentCustomerList(false);" class="w-10 h-10 rounded-full bg-nm-green text-black flex items-center justify-center shadow-xl absolute bottom-2.5 right-2.5 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all hover:scale-105">
+              <i class="fa-solid fa-play ml-0.5 text-sm"></i>
+            </button>
+          </div>
+          <h3 class="text-sm font-bold text-white truncate group-hover:text-nm-green transition-colors">${esc(pl.name)}</h3>
+          <p class="text-xs text-nm-subtext truncate mt-0.5">${pl.trackIds.length} tracks • ${esc(pl.description)}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderCustomerSongRows() {
+      const list = getFilteredCustomerTracks();
+      const rows = document.getElementById('customerSongRows');
+      const empty = document.getElementById('customerEmptyState');
+      const badge = document.getElementById('activeSearchBadge');
+
+      if (app.searchQuery) {
+        badge.textContent = `Search: "${app.searchQuery}"`;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      if (!list.length) {
+        rows.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      const inPlaylistOrLiked = app.customerView === 'liked' || app.customerView.startsWith('pl-');
+
+      rows.innerHTML = list.map((trk, idx) => {
+        const isCurrent = app.currentTrackId === trk.id;
+        const playingNow = isCurrent && app.isPlaying;
+        const liked = app.likedIds.includes(trk.id);
+
+        return `
+          <div onclick="playTrack('${trk.id}', true)" class="grid grid-cols-[32px_1fr_auto] md:grid-cols-[40px_2.2fr_1.3fr_75px_110px] items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.07] transition-colors cursor-pointer group ${isCurrent ? 'bg-white/[0.06]' : ''}">
+            <div class="text-center text-xs font-medium flex items-center justify-center">
+              ${playingNow ? `
+                <div class="flex items-end gap-[2px] h-3.5 w-3.5">
+                  <span class="eq-bar w-0.5 bg-nm-green"></span>
+                  <span class="eq-bar w-0.5 bg-nm-green"></span>
+                  <span class="eq-bar w-0.5 bg-nm-green"></span>
+                </div>
+              ` : `
+                <span class="group-hover:hidden ${isCurrent ? 'text-nm-green font-bold' : 'text-nm-subtext'}">${idx + 1}</span>
+                <i class="fa-solid fa-play hidden group-hover:inline text-white text-xs"></i>
+              `}
+            </div>
+
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-md bg-gradient-to-br ${trk.gradient} flex items-center justify-center flex-shrink-0 shadow">
+                <i class="fa-solid ${trk.icon || 'fa-music'} text-white/90 text-xs"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-semibold truncate ${isCurrent ? 'text-nm-green' : 'text-white'}">${esc(trk.title)}</p>
+                  ${trk.type !== 'synth' ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-nm-subtext uppercase font-bold">Audio</span>' : ''}
+                </div>
+                <p class="text-xs text-nm-subtext truncate">${esc(trk.artist)}</p>
+              </div>
+            </div>
+
+            <div class="hidden md:block text-xs text-nm-subtext truncate">${esc(trk.album)}</div>
+
+            <div class="hidden md:block text-right pr-2 text-xs text-nm-subtext tabular-nums">${fmtTime(trk.duration)}</div>
+
+            <div class="flex items-center justify-end gap-1 sm:gap-1.5">
+              <button type="button" onclick="toggleLikeTrack('${trk.id}', event)" title="${liked ? 'Unlike' : 'Like'}" class="p-1.5 rounded-full hover:bg-white/10 transition-colors ${liked ? 'text-nm-green' : 'text-nm-subtext hover:text-white'}">
+                <i class="${liked ? 'fa-solid' : 'fa-regular'} fa-heart text-xs sm:text-sm"></i>
+              </button>
+              <button type="button" onclick="openAddToPlaylistModal('${trk.id}', event)" title="Add to Playlist" class="p-1.5 rounded-full hover:bg-white/10 text-nm-subtext hover:text-white transition-colors">
+                <i class="fa-solid fa-plus text-xs sm:text-sm"></i>
+              </button>
+              <button type="button" onclick="removeTrackFromView('${trk.id}', event)" title="${inPlaylistOrLiked ? 'Remove from View' : 'Delete Track'}" class="p-1.5 rounded-full hover:bg-red-500/20 text-nm-subtext hover:text-red-400 transition-colors">
+                <i class="fa-solid ${inPlaylistOrLiked ? 'fa-circle-minus' : 'fa-trash-can'} text-xs sm:text-sm"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updatePlayerVisuals() {
+      const icon = document.getElementById('mainPlayPauseIcon');
+      const eq = document.getElementById('liveEqualizer');
+      icon.className = app.isPlaying
+        ? 'fa-solid fa-pause text-sm sm:text-base'
+        : 'fa-solid fa-play text-sm sm:text-base ml-0.5';
+      eq.classList.toggle('eq-paused', !app.isPlaying);
+
+      const trk = getActiveTrack();
+      if (!trk) return;
+
+      document.getElementById('playerTrackTitle').textContent = trk.title;
+      document.getElementById('playerTrackArtist').textContent = trk.artist;
+
+      const badge = document.getElementById('playerTrackBadge');
+      badge.textContent = trk.type === 'synth' ? 'Synth' : 'Audio';
+      badge.classList.remove('hidden');
+
+      const art = document.getElementById('playerArtwork');
+      art.className = `w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gradient-to-br ${trk.gradient} flex-shrink-0 flex items-center justify-center shadow-md`;
+      art.innerHTML = `<i class="fa-solid ${trk.icon || 'fa-music'} text-white text-lg"></i>`;
+
+      const liked = app.likedIds.includes(trk.id);
+      const likeBtn = document.getElementById('playerLikeToggleBtn');
+      likeBtn.className = `transition-colors p-2 flex-shrink-0 ${liked ? 'text-nm-green' : 'text-nm-subtext hover:text-white'}`;
+      likeBtn.innerHTML = `<i class="${liked ? 'fa-solid' : 'fa-regular'} fa-heart text-base"></i>`;
+
+      updateSeekVisuals();
+    }
+
+    function updateSeekVisuals() {
+      const trk = getActiveTrack();
+      const dur = trk?.duration || 0;
+      const cur = Math.min(app.currentTime, dur);
+      const pct = dur > 0 ? (cur / dur) * 100 : 0;
+
+      document.getElementById('playerElapsedText').textContent = fmtTime(cur);
+      document.getElementById('playerDurationText').textContent = fmtTime(dur);
+      document.getElementById('playerSeekSlider').value = pct;
+      document.getElementById('playerSeekFill').style.width = `${pct}%`;
+    }
+
+    function updateVolumeVisuals() {
+      const eff = app.isMuted ? 0 : app.volume;
+      document.getElementById('playerVolumeSlider').value = eff;
+      document.getElementById('playerVolumeFill').style.width = `${eff * 100}%`;
+
+      const volIcon = document.getElementById('playerVolumeIcon');
+      if (eff === 0) {
+        volIcon.className = 'fa-solid fa-volume-xmark text-sm text-red-400';
+      } else if (eff < 0.5) {
+        volIcon.className = 'fa-solid fa-volume-low text-sm';
+      } else {
+        volIcon.className = 'fa-solid fa-volume-high text-sm';
+      }
+    }
+
+    // ==========================================================================
+    // MODALS, DRAWER, TOAST & FORMATTING
+    // ==========================================================================
+    function toggleMobileSidebar(open) {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('mobileBackdrop');
+      if (open) {
+        sb.classList.remove('-translate-x-full');
+        bd.classList.remove('hidden');
+      } else {
+        sb.classList.add('-translate-x-full');
+        bd.classList.add('hidden');
+      }
+    }
+
+    function openModalById(id) {
+      const m = document.getElementById(id);
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeModalById(id) {
+      const m = document.getElementById(id);
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toastBanner');
+      document.getElementById('toastText').textContent = msg;
+      el.classList.remove('opacity-0', 'translate-y-2');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-2');
+      }, 2400);
+    }
+
+    function fmtTime(seconds) {
+      const s = Math.max(0, Math.floor(seconds || 0));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return `${m}:${r < 10 ? '0' : ''}${r}`;
+    }
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
