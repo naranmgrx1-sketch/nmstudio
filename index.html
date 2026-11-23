@@ -124,27 +124,27 @@
           <div class="db-workspace-grid">
             <section class="db-card db-connection-card" aria-labelledby="dbConnectionTitle">
               <div class="db-card-heading"><div><span class="db-kicker">OPTIONAL · SERVER SETUP</span><h2 id="dbConnectionTitle">Database connection</h2></div><span class="db-card-mark">01</span></div>
-              <p class="db-card-intro">Save connection details for a future adapter. This standalone app does not connect to a database by itself.</p>
+              <p class="db-card-intro">NMStudio connects to its local MySQL database through the XAMPP PHP API. Optional database adapters can provide additional backup and sync actions.</p>
               <form id="dbConfigForm" class="db-form" autocomplete="off">
                 <label class="db-field db-field-wide">Database engine
                   <select id="dbEngine" name="engine">
                     <option value="postgresql">PostgreSQL</option>
-                    <option value="mysql">MySQL</option>
+                    <option value="mysql" selected>MySQL</option>
                     <option value="mongodb">MongoDB</option>
                     <option value="sqlite">SQLite</option>
                   </select>
                 </label>
                 <label class="db-field" id="dbHostField">Host
-                  <input id="dbHost" name="host" type="text" placeholder="localhost" spellcheck="false">
+                  <input id="dbHost" name="host" type="text" value="127.0.0.1" placeholder="localhost" spellcheck="false">
                 </label>
                 <label class="db-field" id="dbPortField">Port
                   <input id="dbPort" name="port" type="number" min="1" max="65535" inputmode="numeric">
                 </label>
                 <label class="db-field db-field-wide" id="dbNameField"><span id="dbNameLabel">Database name</span>
-                  <input id="dbName" name="database" type="text" placeholder="nmstudio" spellcheck="false">
+                  <input id="dbName" name="database" type="text" value="nmstudio_db" placeholder="nmstudio_db" spellcheck="false">
                 </label>
                 <label class="db-field">Username
-                  <input id="dbUsername" name="username" type="text" autocomplete="off" placeholder="Optional" spellcheck="false">
+                  <input id="dbUsername" name="username" type="text" value="root" autocomplete="off" placeholder="root" spellcheck="false">
                 </label>
                 <label class="db-field">Password / API token
                   <span class="db-secret-field"><input id="dbSecret" name="secret" type="password" autocomplete="new-password" placeholder="Not saved in this browser"><button id="dbSecretToggle" type="button" class="db-show-secret" aria-label="Show password or API token" aria-pressed="false">Show</button></span>
@@ -250,6 +250,7 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="js/storage.js"></script>
+  <script src="js/dbClient.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/store.js"></script>
   <script src="js/audioEngine.js"></script>

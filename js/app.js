@@ -690,16 +690,16 @@
         $('#signUpForm').classList.toggle('hidden', !signup);
       });
     });
-    $('#signInForm').addEventListener('submit', function (event) {
+    $('#signInForm').addEventListener('submit', async function (event) {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
-      try { NMAuth.signIn(data.get('email'), data.get('password')); enterApp(); }
+      try { await NMAuth.signIn(data.get('email'), data.get('password')); enterApp(); }
       catch (error) { announce(error.message); }
     });
-    $('#signUpForm').addEventListener('submit', function (event) {
+    $('#signUpForm').addEventListener('submit', async function (event) {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
-      try { NMAuth.signUp({ name: data.get('name'), email: data.get('email'), password: data.get('password'), role: data.get('role') }); enterApp(); }
+      try { await NMAuth.signUp({ name: data.get('name'), email: data.get('email'), password: data.get('password'), role: data.get('role') }); enterApp(); }
       catch (error) { announce(error.message); }
     });
     document.addEventListener('keydown', function (event) {
@@ -772,6 +772,7 @@
     window.addEventListener('nmstoragewarning', function (event) {
       if (event.detail && event.detail.message) announce(event.detail.message);
     });
+    window.addEventListener('nmdatachange', render);
     NMStore.init();
     const user = NMAuth.init();
     NMAudio.init({

@@ -24,6 +24,49 @@
     return saved;
   }
 
+  function saveRemote(method, item) {
+    if (!window.NMDBClient || !window.NMDBClient.isAvailable()) return;
+    window.NMDBClient[method](item).then(function (result) {
+      if (result && result.id && (method === 'saveTrack' || method === 'savePlaylist')) {
+        item.remoteId = String(result.id);
+        persist();
+      }
+    }).catch(function (error) {
+      console.warn('NMStudio could not sync ' + method + ' with the local API:', error);
+    });
+  }
+
+  function mergeRemote(localItems, remoteItems, sameItem) {
+    const merged = remoteItems.slice();
+    localItems.forEach(function (localItem) {
+      const index = merged.findIndex(function (remoteItem) { return sameItem(localItem, remoteItem); });
+      if (index < 0) merged.push(localItem);
+      else merged[index] = Object.assign({}, merged[index], localItem);
+    });
+    return merged;
+  }
+
+  async function syncRemote() {
+    if (!window.NMDBClient || !window.NMDBClient.isAvailable()) return false;
+    try {
+      const results = await Promise.all([window.NMDBClient.getTracks(), window.NMDBClient.getPlaylists()]);
+      state.tracks = mergeRemote(state.tracks, results[0], function (local, remote) {
+        return local.id === remote.id ||
+          (local.title.trim().toLowerCase() === remote.title.trim().toLowerCase() &&
+            String(local.artist || '').trim().toLowerCase() === String(remote.artist || '').trim().toLowerCase());
+      });
+      state.playlists = mergeRemote(state.playlists, results[1], function (local, remote) {
+        return local.id === remote.id || local.name.trim().toLowerCase() === remote.name.trim().toLowerCase();
+      });
+      persist();
+      window.dispatchEvent(new CustomEvent('nmdatachange'));
+      return true;
+    } catch (error) {
+      console.warn('NMStudio is using its local library because the API could not be reached:', error);
+      return false;
+    }
+  }
+
   function init() {
     const saved = NMStorage.get(STATE_KEY, null);
     if (saved && Array.isArray(saved.tracks) && Array.isArray(saved.playlists)) {
@@ -41,12 +84,14 @@
       state = { tracks: seedTracks.map(function (track) { return Object.assign({}, track); }), playlists: seedPlaylists.map(function (list) { return Object.assign({}, list, { trackIds: list.trackIds.slice() }); }), likes: ['seed-horizon'], recent: [], volume: 0.72, shuffle: false, repeat: 'off', eq: { low: 0, mid: 0, high: 0 } };
       persist();
     }
+    syncRemote();
   }
 
   function addTrack(track) {
     const item = Object.assign({ id: makeId('track'), album: 'Single', duration: 150, source: 'synth' }, track);
     state.tracks.unshift(item);
     persist();
+    saveRemote('saveTrack', item);
     return item;
   }
 
@@ -54,6 +99,7 @@
     const playlist = { id: makeId('playlist'), name: String(name).trim(), description: String(description || '').trim() || 'A collection of your favorites.', trackIds: [] };
     state.playlists.unshift(playlist);
     persist();
+    saveRemote('savePlaylist', playlist);
     return playlist;
   }
 
@@ -64,12 +110,15 @@
     if (index >= 0) playlist.trackIds.splice(index, 1);
     else playlist.trackIds.push(trackId);
     persist();
+    saveRemote('savePlaylist', playlist);
     return index < 0;
   }
 
   function deletePlaylist(id) {
+    const playlist = state.playlists.find(function (item) { return item.id === id; });
     state.playlists = state.playlists.filter(function (playlist) { return playlist.id !== id; });
     persist();
+    if (playlist) saveRemote('deletePlaylist', playlist);
   }
 
   function toggleLike(id) {
@@ -88,6 +137,8 @@
     state.recent = state.recent.filter(function (item) { return item !== id; });
     state.playlists.forEach(function (playlist) { playlist.trackIds = playlist.trackIds.filter(function (item) { return item !== id; }); });
     persist();
+    saveRemote('deleteTrack', track);
+    state.playlists.forEach(function (playlist) { saveRemote('savePlaylist', playlist); });
     return track;
   }
 
@@ -204,6 +255,7 @@
     setPreference: setPreference,
     exportBackup: exportBackup,
     importBackup: importBackup,
+    syncRemote: syncRemote,
     getTracks: function () { return state.tracks.slice(); },
     getTrack: function (id) { return state.tracks.find(function (track) { return track.id === id; }) || null; },
     getPlaylists: function () { return state.playlists.slice(); },

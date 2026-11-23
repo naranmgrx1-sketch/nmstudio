@@ -13,6 +13,11 @@
     else NMStorage.remove(SESSION_KEY);
   }
 
+  function shouldUseLocal(error) {
+    const status = error && error.status;
+    return !status || status === 0 || status === 404 || status === 405 || status >= 500 || (status >= 200 && status < 300);
+  }
+
   function init() {
     const storedUsers = NMStorage.get(USERS_KEY, []);
     users = Array.isArray(storedUsers) ? storedUsers.filter(function (user) {
@@ -27,6 +32,20 @@
 
   function signIn(email, password) {
     const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (window.NMDBClient && window.NMDBClient.isAvailable()) {
+      return window.NMDBClient.signIn(normalizedEmail, password).then(function (user) {
+        currentUser = user;
+        save();
+        return currentUser;
+      }).catch(function (error) {
+        if (!shouldUseLocal(error)) throw error;
+        return signInLocal(normalizedEmail, password);
+      });
+    }
+    return signInLocal(normalizedEmail, password);
+  }
+
+  function signInLocal(normalizedEmail, password) {
     const user = users.find(function (candidate) {
       return candidate.email.toLowerCase() === normalizedEmail && candidate.password === password;
     });
@@ -41,6 +60,24 @@
     const email = String(data.email || '').trim().toLowerCase();
     const password = String(data.password || '');
     if (!name || !email || password.length < 4) throw new Error('Enter your name, a valid email, and a password of at least 4 characters.');
+    if (window.NMDBClient && window.NMDBClient.isAvailable()) {
+      return window.NMDBClient.signUp({ name: name, email: email, password: password, role: data.role })
+        .then(function (user) {
+          currentUser = user;
+          save();
+          return currentUser;
+        }).catch(function (error) {
+          if (!shouldUseLocal(error)) throw error;
+          return signUpLocal({ name: name, email: email, password: password, role: data.role });
+        });
+    }
+    return signUpLocal({ name: name, email: email, password: password, role: data.role });
+  }
+
+  function signUpLocal(data) {
+    const name = String(data.name || '').trim();
+    const email = String(data.email || '').trim().toLowerCase();
+    const password = String(data.password || '');
     if (users.some(function (user) { return user.email.toLowerCase() === email; })) throw new Error('An account with that email already exists on this device.');
     const user = {
       id: 'user-' + (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)),

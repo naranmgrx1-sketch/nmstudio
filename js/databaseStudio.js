@@ -37,7 +37,7 @@
     $('#dbHealthText').textContent = label;
     $('#dbStatusTitle').textContent = status === 'connected' ? 'Database Server' : 'Local Browser Mode';
     $('#dbStatusDescription').textContent = status === 'connected'
-      ? 'A database adapter confirmed the connection. Available sync actions depend on its capabilities.'
+      ? 'The local PHP API or a database adapter confirmed the connection. Available sync actions depend on its capabilities.'
       : status === 'connecting'
         ? 'Checking the configured connection adapter. Your local library is unchanged.'
         : status === 'fallback'
@@ -160,6 +160,32 @@
     }
     const adapter = getAdapter('testConnection');
     if (!adapter) {
+      const config = getFormConfig();
+      if (window.NMDBClient && window.NMDBClient.isAvailable() && config.engine === 'mysql' &&
+          ['localhost', '127.0.0.1'].includes(config.host.toLowerCase()) && config.database === 'nmstudio_db') {
+        updateHealth('connecting', 'Connecting…');
+        setFeedback(message, 'Checking the NMStudio PHP API…', 'info');
+        $('#dbTestConnection').disabled = true;
+        $('#dbBannerTest').disabled = true;
+        const started = performance.now();
+        try {
+          await window.NMDBClient.health();
+          const latency = Math.max(0, Math.round(performance.now() - started));
+          $('#dbLatency').textContent = latency + ' ms';
+          updateHealth('connected', 'Connected');
+          setFeedback(message, 'NMStudio PHP API confirmed the MySQL connection in ' + latency + ' ms.', 'success');
+          announce('MySQL connection confirmed through api.php.');
+        } catch (error) {
+          updateHealth('fallback', 'Offline / Fallback');
+          $('#dbLatency').textContent = Math.max(0, Math.round(performance.now() - started)) + ' ms';
+          setFeedback(message, error.message || 'The PHP API could not verify MySQL. Local mode remains active.', 'error');
+          announce('Connection test failed. Local Browser Mode remains available.');
+        } finally {
+          $('#dbTestConnection').disabled = false;
+          $('#dbBannerTest').disabled = false;
+        }
+        return;
+      }
       updateHealth('connecting', 'Connecting…');
       setFeedback(message, 'Checking adapter availability…', 'info');
       $('#dbTestConnection').disabled = true;

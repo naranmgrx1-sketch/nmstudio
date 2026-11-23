@@ -22,9 +22,31 @@ Choose **Create account** on the sign-in screen and select a customer or admin r
 - Local browser storage using `localStorage` and IndexedDB where available.
 - Keyboard controls: `/` focuses search, Space toggles playback, and Alt+Left/Right skips tracks.
 
+## Local XAMPP database
+
+NMStudio can use a local MySQL database through the PHP JSON API in `api.php`. The browser never connects directly to MySQL. Keep XAMPP's Apache and MySQL services running and put the project files at:
+
+```text
+C:\xampp\htdocs\nmstudio
+```
+
+You can copy the project contents there, or create a Windows directory junction from an Administrator or developer terminal:
+
+```text
+mklink /J C:\xampp\htdocs\nmstudio "C:\path\to\NM"
+```
+
+The API is configured for `127.0.0.1:3306`, database `nmstudio_db`, user `root`, and an empty password. Ensure PHP's `pdo_mysql` extension is enabled in XAMPP. The existing database should have `users` (`id`, `name`, `email`, `password_hash`, `role`, `created_at`), `tracks` (`id`, `title`, `artist`, `mood`, `source_type`, `audio_url`, `created_at`), and `playlists` (`id`, `user_id`, `name`, `track_ids`, `created_at`) tables. IDs should be auto-incrementing, and `track_ids` should be a JSON or text column.
+
+Open [http://localhost/nmstudio/](http://localhost/nmstudio/) to use the app through XAMPP. Check the PHP/MySQL connection directly at [http://localhost/nmstudio/api.php?action=health](http://localhost/nmstudio/api.php?action=health); a working setup returns JSON with `"success": true` and `"status": "ok"`. The database dashboard's connection test also checks this API for the default local MySQL configuration.
+
+The app loads server tracks and playlists when available and sends new or changed catalog entries to the API. Browser-local data remains available and is merged with the server catalog. If the API or database is unreachable, the app continues using `localStorage` and IndexedDB; local uploaded audio remains in IndexedDB and is not uploaded to MySQL. Account registration/login use the API when it responds, and use the existing device-local account store when the server is offline.
+
+This endpoint is intended for local XAMPP development, not public hosting: it uses the default local root account, has no CSRF/session security layer, and registration accepts the selected role. Do not expose it to a network or use it for production authentication. A production deployment needs server-managed credentials, authorization, and transport security.
+
 ## Database & sync
 
-The admin dashboard starts in **Local Browser Mode** and does not attempt to contact PostgreSQL, MySQL, MongoDB, or SQLite. Browsers cannot safely connect directly to those database servers from a static page, so connection tests and push/pull require a trusted adapter. Without one, the dashboard reports that no connection was made and leaves local data unchanged.
+The admin database dashboard includes a connection check for the local PHP API. Its optional full-backup push/pull and per-track adapter actions still require a separately installed trusted adapter:
 
 A trusted integration can provide `window.NMStudioDbAdapter` before `js/databaseStudio.js` initializes:
 
@@ -49,7 +71,7 @@ The form saves non-secret connection fields in browser storage. Passwords/API to
 
 ## Privacy and security
 
-Accounts and music data stay in this browser; this app does not connect to a backend. NMStudio asks you to sign in each time the page is opened; logging out or closing/reloading the page ends the local session without deleting your library or account. Local sign-in and the self-selected account role are not secure authentication or access control. Uploaded audio is stored in this browser’s IndexedDB and is not uploaded to a server. A browser may restrict IndexedDB when opening a local file directly; Live Server can provide more consistent storage in that case. Backups can contain your uploaded audio files, so store and share them carefully.
+When using XAMPP, account and catalog metadata can be stored in the local MySQL database; otherwise accounts and music data stay in this browser. NMStudio asks you to sign in each time the page is opened. Local fallback sign-in and the self-selected account role are not secure authentication or access control. Uploaded audio is stored in this browser’s IndexedDB and is not uploaded to MySQL. A browser may restrict IndexedDB when opening a local file directly; XAMPP or Live Server can provide more consistent storage. Backups can contain your uploaded audio files, so store and share them carefully.
 
 Direct audio URLs depend on the hosting server allowing playback. Browser security restrictions may prevent a cross-origin audio stream from being analyzed by the visualizer or EQ.
 
