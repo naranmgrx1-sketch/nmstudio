@@ -134,10 +134,6 @@
 .eq-panel { margin-top: auto; padding-top: 15px; }
 .eq-heading { display: flex; justify-content: space-between; align-items: center; color: #b6b8ad; font: 9px var(--mono); letter-spacing: .8px; }
 .eq-heading .text-button { font: 9px var(--sans); letter-spacing: 0; }
-.eq-sliders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-.eq-sliders label { display: grid; justify-items: center; gap: 6px; }
-.eq-sliders input { width: 100%; accent-color: var(--acid); height: 13px; cursor: pointer; }
-.eq-sliders span { color: var(--muted); font: 8px var(--mono); }
 .transport { grid-column: 1 / 4; grid-row: 2; display: grid; grid-template-columns: minmax(180px, 1fr) minmax(280px, 1.35fr) minmax(150px, 1fr); align-items: center; gap: 20px; padding: 10px 18px; border-radius: var(--radius); }
 .transport-track { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .mini-art { width: 45px; height: 45px; flex: 0 0 45px; display: grid; place-items: center; border-radius: 8px; background: linear-gradient(145deg, #9bb46a, #3c4933); color: #e5f1cb; font: 700 14px var(--display); }

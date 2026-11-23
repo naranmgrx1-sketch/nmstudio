@@ -647,15 +647,6 @@
       $('#volumeValue').textContent = Math.round(volume * 100) + '%';
     });
     $('#eqReset').addEventListener('click', function () { setEQ({ low: 0, mid: 0, high: 0 }); });
-    ['low', 'mid', 'high'].forEach(function (band) {
-      const slider = $('#eq' + band.charAt(0).toUpperCase() + band.slice(1));
-      slider.value = String(NMStore.getEq()[band] || 0);
-      slider.addEventListener('input', function () {
-        const settings = { low: Number($('#eqLow').value), mid: Number($('#eqMid').value), high: Number($('#eqHigh').value) };
-        NMStore.setPreference('eq', settings);
-        NMAudio.setEQ(settings);
-      });
-    });
     $('#nowLike').addEventListener('click', toggleActiveLike);
     $('#transportLike').addEventListener('click', toggleActiveLike);
     $('#queueToggle').addEventListener('click', function () { $('#queueList').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
@@ -734,9 +725,6 @@
   function setEQ(values) {
     NMStore.setPreference('eq', values);
     NMAudio.setEQ(values);
-    $('#eqLow').value = values.low;
-    $('#eqMid').value = values.mid;
-    $('#eqHigh').value = values.high;
   }
 
   function drawVisualizer() {
